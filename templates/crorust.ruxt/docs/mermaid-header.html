@@ -1,0 +1,149 @@
+<style>
+  .mermaid {
+    display: flex;
+    justify-content: center;
+    margin: 1.75em 0;
+    padding: 1.25em;
+    background: rgba(22, 27, 34, 0.45);
+    border-radius: 8px;
+    border: 1px solid rgba(56, 139, 253, 0.25);
+    overflow-x: auto;
+  }
+  .mermaid svg {
+    max-width: 100%;
+    height: auto;
+  }
+  /* Light mode override if user switches rustdoc theme to light */
+  :root[data-theme="light"] .mermaid,
+  body.light .mermaid {
+    background: rgba(248, 250, 252, 0.9);
+    border: 1px solid rgba(203, 213, 225, 0.7);
+  }
+</style>
+
+<script type="module">
+  // High-Contrast Dark-Mode Optimized Mermaid.js Loader for Rustdoc
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
+  function isDarkTheme() {
+    const themeAttr = document.documentElement.getAttribute('data-theme');
+    const localTheme = window.localStorage ? window.localStorage.getItem('rustdoc-theme') : null;
+    const currentTheme = (themeAttr || localTheme || '').toLowerCase();
+
+    if (currentTheme.includes('light')) {
+      return false;
+    }
+    if (currentTheme.includes('dark') || currentTheme.includes('ayu')) {
+      return true;
+    }
+    // Fallback to system preference
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
+  function getThemeConfig() {
+    const dark = isDarkTheme();
+    return {
+      startOnLoad: false,
+      theme: dark ? 'dark' : 'default',
+      securityLevel: 'loose',
+      fontFamily: 'Fira Sans, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+      themeVariables: dark ? {
+        darkMode: true,
+        background: 'transparent',
+        clusterBkg: 'transparent',
+        clusterBorder: '#388bfd',
+        defaultLinkColor: '#58a6ff',
+        mainBkg: '#1f3354',
+        textColor: '#e6edf3',
+        primaryColor: '#1f3354',
+        primaryTextColor: '#e6edf3',
+        primaryBorderColor: '#388bfd',
+        lineColor: '#58a6ff',
+        secondaryColor: '#3d2e14',
+        secondaryTextColor: '#e6edf3',
+        secondaryBorderColor: '#d29922',
+        tertiaryColor: '#163824',
+        tertiaryTextColor: '#e6edf3',
+        tertiaryBorderColor: '#3fb950',
+        nodeBorder: '#388bfd',
+        nodeTextColor: '#e6edf3',
+        titleColor: '#58a6ff',
+        edgeLabelBackground: '#0d1117',
+        actorBkg: '#1f3354',
+        actorBorder: '#388bfd',
+        actorTextColor: '#e6edf3',
+        actorLineColor: '#58a6ff',
+        signalColor: '#58a6ff',
+        signalTextColor: '#e6edf3',
+        labelBoxBkgColor: '#161b22',
+        labelBoxBorderColor: '#388bfd',
+        labelTextColor: '#e6edf3',
+        loopTextColor: '#e6edf3',
+        noteBkgColor: '#21262d',
+        noteTextColor: '#e6edf3',
+        noteBorderColor: '#8b949e',
+        activationBorderColor: '#58a6ff',
+        activationBkgColor: '#1f3354',
+        sequenceNumberColor: '#0d1117'
+      } : {
+        darkMode: false,
+        background: 'transparent',
+        primaryColor: '#dbeafe',
+        primaryTextColor: '#1e293b',
+        primaryBorderColor: '#3b82f6',
+        lineColor: '#2563eb',
+        mainBkg: '#f8fafc',
+        nodeBorder: '#3b82f6',
+        nodeTextColor: '#1e293b'
+      }
+    };
+  }
+
+  async function renderAllMermaidNodes() {
+    try {
+      mermaid.initialize(getThemeConfig());
+      const containers = document.querySelectorAll('.mermaid[data-mermaid-src]');
+      const nodesToRender = [];
+
+      for (const container of containers) {
+        container.textContent = container.getAttribute('data-mermaid-src');
+        container.removeAttribute('data-processed');
+        nodesToRender.push(container);
+      }
+
+      if (nodesToRender.length > 0) {
+        await mermaid.run({ nodes: nodesToRender });
+      }
+    } catch (err) {
+      console.error('Failed to render Mermaid diagrams:', err);
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', async () => {
+    const codeBlocks = document.querySelectorAll('pre.language-mermaid, code.language-mermaid');
+
+    for (const block of codeBlocks) {
+      const container = document.createElement('div');
+      container.className = 'mermaid';
+      const rawText = block.textContent.trim();
+      container.setAttribute('data-mermaid-src', rawText);
+      container.textContent = rawText;
+
+      const target = block.tagName.toLowerCase() === 'code' ? block.parentElement : block;
+      target.replaceWith(container);
+    }
+
+    await renderAllMermaidNodes();
+
+    // Listen for rustdoc theme attribute mutations to adapt immediately
+    const observer = new MutationObserver(async (mutations) => {
+      for (const m of mutations) {
+        if (m.attributeName === 'data-theme') {
+          await renderAllMermaidNodes();
+          break;
+        }
+      }
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  });
+</script>

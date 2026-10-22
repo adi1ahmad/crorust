@@ -1,0 +1,17 @@
+[package]
+name = "crorust-runtime-stub"
+description = "In-tree clean-room AppImage Type 2 ELF runtime launcher stub for CroRust."
+publish = false
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+
+[dependencies]
+backhand = { workspace = true, default-features = false, features = ["gzip"] }
+
+[[bin]]
+name = "crorust-runtime-stub"
+path = "src/main.rs"

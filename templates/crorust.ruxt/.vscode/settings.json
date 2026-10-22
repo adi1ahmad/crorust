@@ -1,0 +1,14 @@
+{
+  "files.watcherExclude": {
+    "**/.cache/**": true,
+    "**/target/**": true
+  },
+  "search.exclude": {
+    "**/.cache": true,
+    "**/target": true
+  },
+  "rust-analyzer.files.excludeDirs": [
+    ".cache",
+    "target"
+  ]
+}

@@ -1,0 +1,28 @@
+[build]
+# Redirect all Cargo intermediate and output artifacts into .cache/target
+target-dir = ".cache/target"
+rustdocflags = ["--html-in-header", "docs/mermaid-header.html"]
+
+[alias]
+i = "install --path crates/crorust --locked"
+doc-full = "doc --workspace --no-deps"
+
+# ── Linker Acceleration ───────────────────────────────────────────────────────
+
+# Linux x86_64: Use LLVM lld
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+# Linux aarch64: Use LLVM lld
+[target.aarch64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+# Windows x86_64: Use rust-lld
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld"
+
+# Windows aarch64: Use rust-lld
+[target.aarch64-pc-windows-msvc]
+linker = "rust-lld"

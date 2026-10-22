@@ -1,0 +1,89 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/*",
+]
+default-members = ["crates/crorust"]
+exclude = [
+    "templates/*",
+    "templates/crorust.ruxt",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+authors = ["Adil Ahmad <adilahmad@tuta.io>"]
+repository = "https://github.com/adi1ahmad/crorust"
+homepage = "https://crorust.com"
+license = "AGPL-3.0-only"
+
+[workspace.dependencies]
+crorust-android = { version = "0.0.1", path = "crates/crorust-android" }
+crorust-apple = { version = "0.0.1", path = "crates/crorust-apple" }
+crorust-common = { version = "0.0.1", path = "crates/crorust-common" }
+crorust-linux = { version = "0.0.1", path = "crates/crorust-linux" }
+crorust-mvn = { version = "0.0.1", path = "crates/crorust-mvn" }
+crorust-windows = { version = "0.0.1", path = "crates/crorust-windows" }
+
+# General Utilities
+anyhow = "1.0"
+apple-codesign = "0.22.0"
+apple-dmg = "0.2.0"
+app-store-connect = "0.1.0"
+backhand = { version = "0.25", default-features = false, features = ["gzip"] }
+base64 = "0.20.0"
+brotli = "7.0"
+byteorder = "1.4.3"
+clap = { version = "4.0", features = ["derive"] }
+clap_complete = "4.0"
+console = "0.15"
+dirs = "4.0.0"
+dunce = "1.0"
+fd-lock = "4.0"
+flate2 = "1.0"
+glob = "0.3"
+hex = "0.4"
+icns = "0.3.1"
+image = { version = "0.24.5", default-features = false, features = ["png", "webp"] }
+indicatif = "0.17"
+log = "0.4"
+log-panics = "2.1.0"
+pem = "1.1.0"
+pkcs8 = "0.9.0"
+plist = "1.3.1"
+pubgrub = "0.2.1"
+quick-xml = { version = "0.37.2", features = ["serialize"] }
+rasn = "0.6.1"
+rasn-cms = "0.6.0"
+rasn-pkix = "0.6.0"
+rayon = "1.10"
+reqwest = { version = "0.11.13", default-features = false, features = ["blocking", "rustls-tls"] }
+rsa = "0.7.2"
+serde = { version = "1.0", features = ["derive", "rc"] }
+
+serde_json = "1.0"
+sha1 = "0.10"
+sha2 = { version = "0.10", features = ["oid"] }
+shlex = "1"
+tar = "0.4"
+tempfile = "3"
+toml = "0.8.20"
+tracing = "0.1"
+tracing-log = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
+walkdir = "2"
+which = "4.4"
+x509-certificate = "0.16.0"
+xz2 = "0.1.7"
+zip = { version = "0.6.6", default-features = false }
+zstd = "0.12.1"
+
+# ── Profile Optimizations ────────────────────────────────────────────────────
+# Optimized for high-throughput release builds in CI without symbol or core contention.
+[profile.release]
+opt-level = 3
+debug = false
+strip = true
+codegen-units = 16
+
+

@@ -1,0 +1,823 @@
+name: CI & Multi-Platform Matrix Dogfooding
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    branches:
+      - master
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  CARGO_INCREMENTAL: 0
+  CARGO_PROFILE_DEV_DEBUG: "line-tables-only"
+  CARGO_PROFILE_TEST_DEBUG: "line-tables-only"
+  # Pinned nightly used by the template (must match templates/crorust.ruxt/rust-toolchain.toml).
+  RUST_NIGHTLY: nightly-2026-10-15
+
+jobs:
+  # ============================================================================
+  # TIER 1: Code Quality & Multi-Host Workspace Tests
+  # ============================================================================
+  tier1-lint-and-unit-tests-linux:
+    name: "Tier 1: Tests & Quality (ubuntu-24.04)"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Install stable Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Configure Cargo Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> .cache/target"
+          shared-key: "crorust-workspace-dev-v2-ubuntu-24.04"
+          cache-on-failure: false
+          save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+
+      - name: Install Linux linker (clang + lld)
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends clang lld
+
+      - name: Verify Code Formatting
+        shell: bash
+        run: cargo fmt --all -- --check
+
+      - name: Workspace Clippy Lints
+        shell: bash
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+      - name: Workspace Unit & Integration Tests
+        shell: bash
+        run: cargo test --workspace --all-features --locked --no-fail-fast
+
+  tier1-tests-macos:
+    name: "Tier 1: Tests (macos-14)"
+    runs-on: macos-14
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Install stable Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Configure Cargo Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> .cache/target"
+          shared-key: "crorust-workspace-dev-v2-macos-14"
+          cache-on-failure: false
+          save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+
+      - name: Workspace Clippy Lints (macOS)
+        shell: bash
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+      - name: Workspace Unit & Integration Tests
+        shell: bash
+        run: cargo test --workspace --all-features --locked --no-fail-fast
+
+  tier1-tests-windows:
+    name: "Tier 1: Tests (windows-2025)"
+    runs-on: windows-2025
+    timeout-minutes: 30
+    env:
+      RUSTFLAGS: "-C linker=rust-lld.exe"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Optimize Windows File I/O (Disable Defender Scanning)
+        shell: pwsh
+        run: |
+          $exclusions = @(
+            "$env:GITHUB_WORKSPACE",
+            "$env:RUNNER_TEMP",
+            "$env:TEMP",
+            "$env:USERPROFILE\.cargo",
+            "$env:USERPROFILE\.rustup"
+          )
+          Get-PSDrive -PSProvider FileSystem | ForEach-Object { $exclusions += $_.Root }
+          $exclusions = $exclusions | Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique
+
+          $regPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Exclusions\Paths"
+          if (-not (Test-Path $regPath)) {
+            New-Item -Path $regPath -Force | Out-Null
+          }
+          foreach ($path in $exclusions) {
+            Add-MpPreference -ExclusionPath $path -ErrorAction SilentlyContinue
+            New-ItemProperty -Path $regPath -Name $path -Value 0 -PropertyType DWORD -Force -ErrorAction SilentlyContinue | Out-Null
+          }
+          Set-MpPreference -DisableRealtimeMonitoring $true -ErrorAction SilentlyContinue
+
+          Write-Host "Active Windows Defender exclusions:"
+          (Get-MpPreference).ExclusionPath
+
+      - name: Install stable Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Configure Cargo Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> .cache/target"
+          shared-key: "crorust-workspace-dev-v2-windows-2025"
+          cache-on-failure: false
+          save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+
+      - name: Workspace Clippy Lints (Windows)
+        shell: bash
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+      - name: Workspace Unit & Integration Tests
+        shell: bash
+        run: cargo test --workspace --all-features --locked --no-fail-fast
+
+  # ============================================================================
+  # TIER 2: Fast CLI Binary Staging
+  # ============================================================================
+  tier2-build-cli-linux:
+    name: "Tier 2: Build CLI (ubuntu-24.04)"
+    needs: [tier1-lint-and-unit-tests-linux]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Install stable Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Configure Cargo Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> .cache/target"
+          shared-key: "crorust-workspace-release-v2-ubuntu-24.04"
+          cache-on-failure: false
+          save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+
+      - name: Install Linux linker (clang + lld)
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends clang lld
+
+      - name: Compile crorust CLI in release mode
+        shell: bash
+        run: cargo build --release --locked -p crorust
+
+      - name: Stage compiled binary
+        shell: bash
+        run: |
+          mkdir -p bin
+          cp .cache/target/release/crorust bin/crorust
+          strip bin/crorust
+          echo "Stripped CLI binary size: $(stat -c%s bin/crorust 2>/dev/null || stat -f%z bin/crorust) bytes"
+
+      - name: Verify binary execution & system diagnostics
+        shell: bash
+        run: |
+          ./bin/crorust --version
+          ./bin/crorust i
+
+      - name: Upload CLI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: crorust-linux-x64
+          path: bin/crorust
+          retention-days: 5
+          if-no-files-found: error
+
+  tier2-build-cli-macos:
+    name: "Tier 2: Build CLI (macos-14)"
+    needs: [tier1-tests-macos]
+    runs-on: macos-14
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Install stable Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Configure Cargo Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> .cache/target"
+          shared-key: "crorust-workspace-release-v2-macos-14"
+          cache-on-failure: false
+          save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+
+      - name: Compile crorust CLI in release mode
+        shell: bash
+        run: cargo build --release --locked -p crorust
+
+      - name: Stage compiled binary
+        shell: bash
+        run: |
+          mkdir -p bin
+          cp .cache/target/release/crorust bin/crorust
+          strip bin/crorust
+          echo "Stripped CLI binary size: $(stat -c%s bin/crorust 2>/dev/null || stat -f%z bin/crorust) bytes"
+
+      - name: Verify binary execution & system diagnostics
+        shell: bash
+        run: |
+          ./bin/crorust --version
+          ./bin/crorust i
+
+      - name: Upload CLI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: crorust-macos-arm64
+          path: bin/crorust
+          retention-days: 5
+          if-no-files-found: error
+
+  tier2-build-cli-windows:
+    name: "Tier 2: Build CLI (windows-2025)"
+    needs: [tier1-tests-windows]
+    runs-on: windows-2025
+    timeout-minutes: 35
+    env:
+      RUSTFLAGS: "-C linker=rust-lld.exe"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Optimize Windows File I/O (Disable Defender Scanning)
+        shell: pwsh
+        run: |
+          $exclusions = @(
+            "$env:GITHUB_WORKSPACE",
+            "$env:RUNNER_TEMP",
+            "$env:TEMP",
+            "$env:USERPROFILE\.cargo",
+            "$env:USERPROFILE\.rustup"
+          )
+          Get-PSDrive -PSProvider FileSystem | ForEach-Object { $exclusions += $_.Root }
+          $exclusions = $exclusions | Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique
+
+          $regPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Exclusions\Paths"
+          if (-not (Test-Path $regPath)) {
+            New-Item -Path $regPath -Force | Out-Null
+          }
+          foreach ($path in $exclusions) {
+            Add-MpPreference -ExclusionPath $path -ErrorAction SilentlyContinue
+            New-ItemProperty -Path $regPath -Name $path -Value 0 -PropertyType DWORD -Force -ErrorAction SilentlyContinue | Out-Null
+          }
+          Set-MpPreference -DisableRealtimeMonitoring $true -ErrorAction SilentlyContinue
+
+          Write-Host "Active Windows Defender exclusions:"
+          (Get-MpPreference).ExclusionPath
+
+      - name: Install stable Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Configure Cargo Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> .cache/target"
+          shared-key: "crorust-workspace-release-v2-windows-2025"
+          cache-on-failure: false
+          save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+
+      - name: Compile crorust CLI in release mode
+        shell: bash
+        run: cargo build --release --locked -p crorust
+
+      - name: Stage compiled binary
+        shell: bash
+        run: |
+          mkdir -p bin
+          cp .cache/target/release/crorust.exe bin/crorust.exe
+          if command -v llvm-strip >/dev/null 2>&1; then
+            llvm-strip bin/crorust.exe || true
+          fi
+
+      - name: Verify binary execution & system diagnostics
+        shell: bash
+        run: |
+          ./bin/crorust.exe --version
+          ./bin/crorust.exe i
+
+      - name: Upload CLI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: crorust-windows-x64
+          path: bin/crorust.exe
+          retention-days: 5
+          if-no-files-found: error
+
+  # ============================================================================
+  # TIER 3: Scaffolding E2E Smoke Test (crorust template init -> cargo check)
+  # ============================================================================
+  tier3-scaffolding-smoke-test:
+    name: "Tier 3: Scaffolding E2E Smoke Test"
+    needs: [tier2-build-cli-linux]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Download crorust CLI artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: crorust-linux-x64
+          path: bin
+
+      - name: Ensure crorust binary is executable
+        run: chmod +x bin/crorust
+
+      - name: Install pinned Rust nightly (template toolchain)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_NIGHTLY }}
+          targets: wasm32-unknown-unknown,aarch64-linux-android,x86_64-linux-android,armv7-linux-androideabi,aarch64-apple-ios,x86_64-apple-darwin,aarch64-apple-darwin,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu,x86_64-pc-windows-gnu,x86_64-pc-windows-msvc
+          components: rust-src,rust-analyzer,clippy,rustfmt
+
+      - name: Configure Cargo Cache for Template & Scaffolding
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "templates/crorust.ruxt -> .cache/target"
+          shared-key: "template-v2-ubuntu-24.04"
+          cache-on-failure: false
+          save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+
+      - name: Install Linux Desktop Dependencies (Wayland, X11, XKB)
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            clang \
+            lld \
+            libasound2-dev \
+            libudev-dev \
+            libwayland-dev \
+            libx11-dev \
+            libxkbcommon-dev \
+            libxkbcommon-x11-0
+
+      - name: Inspect embedded template metadata (crorust template info)
+        shell: bash
+        run: ./bin/crorust template info
+
+      - name: Scaffold new application with crorust template init
+        shell: bash
+        run: |
+          SANDBOX="$RUNNER_TEMP/e2e_sandbox"
+          mkdir -p "$SANDBOX"
+          echo "APP=$SANDBOX/smoke_test_app" >> "$GITHUB_ENV"
+          ./bin/crorust template init "$SANDBOX/smoke_test_app"
+
+      - name: Verify Substituted Identifiers in Scaffolded Project
+        shell: bash
+        run: |
+          echo "Verifying substituted identifiers in $APP..."
+          grep -q 'name = "smoke-test-app"' "$APP/Cargo.toml"
+          grep -q 'package = "smoke-test-app"' "$APP/manifest.toml"
+          grep -q 'name = "smoke_test_app"' "$APP/manifest.toml"
+          grep -q 'label = "Smoke Test App"' "$APP/manifest.toml"
+          grep -q 'package com.example.smoke_test_app' "$APP/kotlin/MainActivity.kt"
+          grep -q 'System.loadLibrary("smoke_test_app")' "$APP/kotlin/MainActivity.kt"
+          echo "All template identifiers substituted successfully."
+
+      - name: Verify Scaffolded App Compilation (cargo check)
+        shell: bash
+        run: |
+          cd "$APP"
+          cargo check --locked
+
+      - name: Verify Reference Template Self-Check (crorust template check)
+        shell: bash
+        run: ./bin/crorust template check
+
+  tier3-scaffolding-smoke-test-windows:
+    name: "Tier 3: Scaffolding E2E Smoke Test (windows-2025)"
+    needs: [tier2-build-cli-windows]
+    runs-on: windows-2025
+    timeout-minutes: 20
+    env:
+      RUSTFLAGS: "-C linker=rust-lld.exe"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Optimize Windows File I/O (Disable Defender Scanning)
+        shell: pwsh
+        run: |
+          $exclusions = @(
+            "$env:GITHUB_WORKSPACE",
+            "$env:RUNNER_TEMP",
+            "$env:TEMP",
+            "$env:USERPROFILE\.cargo",
+            "$env:USERPROFILE\.rustup"
+          )
+          Get-PSDrive -PSProvider FileSystem | ForEach-Object { $exclusions += $_.Root }
+          $exclusions = $exclusions | Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique
+
+          $regPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Exclusions\Paths"
+          if (-not (Test-Path $regPath)) {
+            New-Item -Path $regPath -Force | Out-Null
+          }
+          foreach ($path in $exclusions) {
+            Add-MpPreference -ExclusionPath $path -ErrorAction SilentlyContinue
+            New-ItemProperty -Path $regPath -Name $path -Value 0 -PropertyType DWORD -Force -ErrorAction SilentlyContinue | Out-Null
+          }
+          Set-MpPreference -DisableRealtimeMonitoring $true -ErrorAction SilentlyContinue
+
+          Write-Host "Active Windows Defender exclusions:"
+          (Get-MpPreference).ExclusionPath
+
+      - name: Download crorust CLI artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: crorust-windows-x64
+          path: bin
+
+      - name: Install pinned Rust nightly (template toolchain)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_NIGHTLY }}
+          targets: wasm32-unknown-unknown,aarch64-linux-android,x86_64-linux-android,armv7-linux-androideabi,aarch64-apple-ios,x86_64-apple-darwin,aarch64-apple-darwin,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu,x86_64-pc-windows-gnu,x86_64-pc-windows-msvc
+          components: rust-src,rust-analyzer,clippy,rustfmt
+
+      - name: Configure Cargo Cache for Template & Scaffolding
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "templates/crorust.ruxt -> .cache/target"
+          shared-key: "template-v2-windows-2025"
+          cache-on-failure: false
+          save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+
+      - name: Inspect embedded template metadata (crorust template info)
+        shell: bash
+        run: ./bin/crorust.exe template info
+
+      - name: Scaffold new application with crorust template init
+        shell: bash
+        run: |
+          SANDBOX="$RUNNER_TEMP/e2e_sandbox"
+          mkdir -p "$SANDBOX"
+          echo "APP=$SANDBOX/smoke_test_app" >> "$GITHUB_ENV"
+          ./bin/crorust.exe template init "$SANDBOX/smoke_test_app"
+
+      - name: Verify Substituted Identifiers in Scaffolded Project
+        shell: bash
+        run: |
+          echo "Verifying substituted identifiers in $APP..."
+          grep -q 'name = "smoke-test-app"' "$APP/Cargo.toml"
+          grep -q 'package = "smoke-test-app"' "$APP/manifest.toml"
+          grep -q 'name = "smoke_test_app"' "$APP/manifest.toml"
+          grep -q 'label = "Smoke Test App"' "$APP/manifest.toml"
+          grep -q 'package com.example.smoke_test_app' "$APP/kotlin/MainActivity.kt"
+          grep -q 'System.loadLibrary("smoke_test_app")' "$APP/kotlin/MainActivity.kt"
+          echo "All template identifiers substituted successfully."
+
+      - name: Verify Scaffolded App Compilation (cargo check)
+        shell: bash
+        run: |
+          cd "$APP"
+          cargo check --locked
+
+      - name: Verify Reference Template Self-Check (crorust template check)
+        shell: bash
+        run: ./bin/crorust.exe template check
+
+  # ============================================================================
+  # TIER 4: Multi-Host Cross-Platform Matrix Dogfooding
+  # ============================================================================
+  tier4-dogfood-linux:
+    name: "Tier 4: Build (${{ matrix.host-os }} -> ${{ matrix.target-platform }}-${{ matrix.target-arch }})"
+    needs: [tier2-build-cli-linux]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host-os: ubuntu-24.04
+            host-slug: linux-x64
+            cli-artifact: crorust-linux-x64
+            target-platform: linux
+            target-arch: x64
+            rust-target: x86_64-unknown-linux-gnu
+          - host-os: ubuntu-24.04
+            host-slug: linux-x64
+            cli-artifact: crorust-linux-x64
+            target-platform: android
+            target-arch: arm64
+            rust-target: aarch64-linux-android
+          - host-os: ubuntu-24.04
+            host-slug: linux-x64
+            cli-artifact: crorust-linux-x64
+            target-platform: windows
+            target-arch: x64
+            rust-target: x86_64-pc-windows-msvc
+          - host-os: ubuntu-24.04
+            host-slug: linux-x64
+            cli-artifact: crorust-linux-x64
+            target-platform: web
+            target-arch: x64
+            rust-target: wasm32-unknown-unknown
+          - host-os: ubuntu-24.04
+            host-slug: linux-x64
+            cli-artifact: crorust-linux-x64
+            target-platform: macos
+            target-arch: arm64
+            rust-target: aarch64-apple-darwin
+          - host-os: ubuntu-24.04
+            host-slug: linux-x64
+            cli-artifact: crorust-linux-x64
+            target-platform: ios
+            target-arch: arm64
+            rust-target: aarch64-apple-ios
+    runs-on: ${{ matrix.host-os }}
+    timeout-minutes: 40
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Dogfood build, verify & upload
+        uses: ./.github/actions/dogfood-build
+        with:
+          platform: ${{ matrix.target-platform }}
+          arch: ${{ matrix.target-arch }}
+          cli_artifact: ${{ matrix.cli-artifact }}
+          host_slug: ${{ matrix.host-slug }}
+          nightly: ${{ env.RUST_NIGHTLY }}
+          cache_dir: ${{ github.workspace }}/.cache/crorust-tools
+          tool_cache_key: crorust-tools-v2-${{ runner.os }}-${{ matrix.target-platform }}-${{ hashFiles('crates/crorust/src/download/catalog.rs', 'crates/crorust/src/commands/i.rs', 'templates/crorust.ruxt/manifest.toml') }}
+
+  tier4-dogfood-macos:
+    name: "Tier 4: Build (${{ matrix.host-os }} -> ${{ matrix.target-platform }}-${{ matrix.target-arch }})"
+    needs: [tier2-build-cli-macos]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host-os: macos-14
+            host-slug: macos-arm64
+            cli-artifact: crorust-macos-arm64
+            target-platform: macos
+            target-arch: arm64
+            rust-target: aarch64-apple-darwin
+          - host-os: macos-14
+            host-slug: macos-arm64
+            cli-artifact: crorust-macos-arm64
+            target-platform: ios
+            target-arch: arm64
+            rust-target: aarch64-apple-ios
+          - host-os: macos-14
+            host-slug: macos-arm64
+            cli-artifact: crorust-macos-arm64
+            target-platform: android
+            target-arch: arm64
+            rust-target: aarch64-linux-android
+          - host-os: macos-14
+            host-slug: macos-arm64
+            cli-artifact: crorust-macos-arm64
+            target-platform: web
+            target-arch: x64
+            rust-target: wasm32-unknown-unknown
+          - host-os: macos-14
+            host-slug: macos-arm64
+            cli-artifact: crorust-macos-arm64
+            target-platform: linux
+            target-arch: x64
+            rust-target: x86_64-unknown-linux-gnu
+          - host-os: macos-14
+            host-slug: macos-arm64
+            cli-artifact: crorust-macos-arm64
+            target-platform: windows
+            target-arch: x64
+            rust-target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.host-os }}
+    timeout-minutes: 40
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Dogfood build, verify & upload
+        uses: ./.github/actions/dogfood-build
+        with:
+          platform: ${{ matrix.target-platform }}
+          arch: ${{ matrix.target-arch }}
+          cli_artifact: ${{ matrix.cli-artifact }}
+          host_slug: ${{ matrix.host-slug }}
+          nightly: ${{ env.RUST_NIGHTLY }}
+          cache_dir: ${{ github.workspace }}/.cache/crorust-tools
+          tool_cache_key: crorust-tools-v2-${{ runner.os }}-${{ matrix.target-platform }}-${{ hashFiles('crates/crorust/src/download/catalog.rs', 'crates/crorust/src/commands/i.rs', 'templates/crorust.ruxt/manifest.toml') }}
+
+  tier4-dogfood-windows:
+    name: "Tier 4: Build (${{ matrix.host-os }} -> ${{ matrix.target-platform }}-${{ matrix.target-arch }})"
+    needs: [tier2-build-cli-windows]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host-os: windows-2025
+            host-slug: windows-x64
+            cli-artifact: crorust-windows-x64
+            target-platform: windows
+            target-arch: x64
+            rust-target: x86_64-pc-windows-msvc
+          - host-os: windows-2025
+            host-slug: windows-x64
+            cli-artifact: crorust-windows-x64
+            target-platform: android
+            target-arch: arm64
+            rust-target: aarch64-linux-android
+          - host-os: windows-2025
+            host-slug: windows-x64
+            cli-artifact: crorust-windows-x64
+            target-platform: web
+            target-arch: x64
+            rust-target: wasm32-unknown-unknown
+          - host-os: windows-2025
+            host-slug: windows-x64
+            cli-artifact: crorust-windows-x64
+            target-platform: linux
+            target-arch: x64
+            rust-target: x86_64-unknown-linux-gnu
+          - host-os: windows-2025
+            host-slug: windows-x64
+            cli-artifact: crorust-windows-x64
+            target-platform: macos
+            target-arch: arm64
+            rust-target: aarch64-apple-darwin
+          - host-os: windows-2025
+            host-slug: windows-x64
+            cli-artifact: crorust-windows-x64
+            target-platform: ios
+            target-arch: arm64
+            rust-target: aarch64-apple-ios
+    runs-on: ${{ matrix.host-os }}
+    timeout-minutes: 40
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Dogfood build, verify & upload
+        uses: ./.github/actions/dogfood-build
+        with:
+          platform: ${{ matrix.target-platform }}
+          arch: ${{ matrix.target-arch }}
+          cli_artifact: ${{ matrix.cli-artifact }}
+          host_slug: ${{ matrix.host-slug }}
+          nightly: ${{ env.RUST_NIGHTLY }}
+          cache_dir: ${{ github.workspace }}/.cache/crorust-tools
+          tool_cache_key: crorust-tools-v2-${{ runner.os }}-${{ matrix.target-platform }}-${{ hashFiles('crates/crorust/src/download/catalog.rs', 'crates/crorust/src/commands/i.rs', 'templates/crorust.ruxt/manifest.toml') }}
+
+  tier5-diagnostics-summary:
+    name: "Tier 5: CI Run Summary"
+    needs:
+      - tier1-lint-and-unit-tests-linux
+      - tier1-tests-macos
+      - tier1-tests-windows
+      - tier2-build-cli-linux
+      - tier2-build-cli-macos
+      - tier2-build-cli-windows
+      - tier3-scaffolding-smoke-test
+      - tier3-scaffolding-smoke-test-windows
+      - tier4-dogfood-linux
+      - tier4-dogfood-macos
+      - tier4-dogfood-windows
+    runs-on: ubuntu-24.04
+    if: always()
+    steps:
+      - name: Render CI Status Report
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          T1_L: ${{ needs.tier1-lint-and-unit-tests-linux.result }}
+          T1_M: ${{ needs.tier1-tests-macos.result }}
+          T1_W: ${{ needs.tier1-tests-windows.result }}
+          T2_L: ${{ needs.tier2-build-cli-linux.result }}
+          T2_M: ${{ needs.tier2-build-cli-macos.result }}
+          T2_W: ${{ needs.tier2-build-cli-windows.result }}
+          T3_L: ${{ needs.tier3-scaffolding-smoke-test.result }}
+          T3_W: ${{ needs.tier3-scaffolding-smoke-test-windows.result }}
+          T4_L: ${{ needs.tier4-dogfood-linux.result }}
+          T4_M: ${{ needs.tier4-dogfood-macos.result }}
+          T4_W: ${{ needs.tier4-dogfood-windows.result }}
+        run: |
+          icon() {
+            case "$1" in
+              success) echo "✅" ;; failure) echo "❌" ;; cancelled) echo "⏹️" ;;
+              skipped) echo "⏭️" ;; *) echo "❔" ;;
+            esac
+          }
+          {
+            echo "# CI Multi-Host & Multi-Platform Matrix Summary"
+            echo
+            echo "| Stage | Result |"
+            echo "| :--- | :--- |"
+            echo "| Tier 1: Lint & Workspace Tests (Ubuntu) | $(icon "$T1_L") \`$T1_L\` |"
+            echo "| Tier 1: Workspace Tests (macOS) | $(icon "$T1_M") \`$T1_M\` |"
+            echo "| Tier 1: Workspace Tests (Windows) | $(icon "$T1_W") \`$T1_W\` |"
+            echo "| Tier 2: CLI Binary Compilation (Ubuntu) | $(icon "$T2_L") \`$T2_L\` |"
+            echo "| Tier 2: CLI Binary Compilation (macOS) | $(icon "$T2_M") \`$T2_M\` |"
+            echo "| Tier 2: CLI Binary Compilation (Windows) | $(icon "$T2_W") \`$T2_W\` |"
+            echo "| Tier 3: Scaffolding E2E Smoke Test (Ubuntu) | $(icon "$T3_L") \`$T3_L\` |"
+            echo "| Tier 3: Scaffolding E2E Smoke Test (Windows) | $(icon "$T3_W") \`$T3_W\` |"
+            echo "| Tier 4: Cross-Platform Matrix Dogfooding (Linux Host) | $(icon "$T4_L") \`$T4_L\` |"
+            echo "| Tier 4: Cross-Platform Matrix Dogfooding (macOS Host) | $(icon "$T4_M") \`$T4_M\` |"
+            echo "| Tier 4: Cross-Platform Matrix Dogfooding (Windows Host) | $(icon "$T4_W") \`$T4_W\` |"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Per-job detail: which job and which step broke, with duration.
+          JOBS_JSON="$(gh api --paginate \
+            "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?per_page=100" \
+            --jq '.jobs[]' 2>/dev/null | jq -s '.' 2>/dev/null || echo '[]')"
+
+          {
+            echo "## Jobs"
+            echo
+            echo "| Job | Result | Duration | Failed step |"
+            echo "| :--- | :--- | ---: | :--- |"
+            echo "$JOBS_JSON" | jq -r '
+              .[] | select(.name | startswith("Tier 5") | not) |
+              ( (.started_at // empty) as $s | (.completed_at // empty) as $c
+                | (($c|fromdateiso8601) - ($s|fromdateiso8601)) ) as $d |
+              "| \(.name) | \(.conclusion // .status) | \(($d // 0) / 60 | floor)m \(($d // 0) % 60)s | \(
+                ([.steps[]? | select(.conclusion == "failure" or .conclusion == "cancelled") | .name] | first) // "-" ) |"
+            ' || true
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          FAILED="$(echo "$JOBS_JSON" | jq -r '[.[] | select(.conclusion == "failure" or .conclusion == "cancelled") | .name] | length' 2>/dev/null || echo 0)"
+
+          # Render Staged Deliverables & Artifacts Table
+          ARTIFACTS_JSON="$(gh api --paginate \
+            "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts?per_page=100" \
+            --jq '.artifacts[]' 2>/dev/null | jq -s '.' 2>/dev/null || echo '[]')"
+
+          {
+            echo "## Staged Deliverables & Artifacts"
+            echo
+            echo "| Artifact Name | Size | Expired |"
+            echo "| :--- | ---: | :--- |"
+            echo "$ARTIFACTS_JSON" | jq -r '
+              .[] |
+              "| `\(.name)` | \( ( (.size_in_bytes / 1048576 * 100) | floor) / 100 ) MB | \(.expired) |"
+            ' || true
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          {
+            echo "**${FAILED} job(s) failed or were cancelled.**"
+            echo
+            echo "Reproduce the analysis locally with: \`scripts/fetch-ci-logs.sh ${{ github.run_id }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

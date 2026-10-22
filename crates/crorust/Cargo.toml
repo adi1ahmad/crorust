@@ -1,0 +1,82 @@
+[package]
+name = "crorust"
+description = "Cross-platform build and packaging tool for Rust desktop & mobile apps without external toolchains."
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+
+[features]
+default = [
+    "platform-android",
+    "platform-apple",
+    "platform-windows",
+    "platform-linux",
+    "platform-web",
+]
+
+platform-android = []
+platform-apple = ["dep:apple-dmg", "dep:serde_json", "dep:app-store-connect"]
+platform-windows = []
+platform-linux = []
+platform-web = []
+
+[dependencies]
+anyhow.workspace = true
+apple-dmg = { workspace = true, optional = true }
+app-store-connect = { workspace = true, optional = true }
+base64.workspace = true
+brotli.workspace = true
+clap.workspace = true
+clap_complete.workspace = true
+console.workspace = true
+crorust-android.workspace = true
+crorust-apple.workspace = true
+crorust-common.workspace = true
+crorust-linux.workspace = true
+crorust-mvn.workspace = true
+crorust-windows.workspace = true
+dirs.workspace = true
+dunce.workspace = true
+fd-lock.workspace = true
+flate2.workspace = true
+glob.workspace = true
+hex.workspace = true
+indicatif.workspace = true
+log.workspace = true
+log-panics.workspace = true
+plist.workspace = true
+quick-xml.workspace = true
+rayon.workspace = true
+reqwest.workspace = true
+serde = { workspace = true }
+serde_json = { workspace = true, optional = true }
+sha1.workspace = true
+sha2.workspace = true
+shlex.workspace = true
+tar.workspace = true
+toml.workspace = true
+tracing.workspace = true
+tracing-log.workspace = true
+tracing-subscriber.workspace = true
+walkdir.workspace = true
+which.workspace = true
+xz2.workspace = true
+zip.workspace = true
+zstd.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+cargo_metadata = "0.18"
+backhand.workspace = true
+
+[build-dependencies]
+anyhow.workspace = true
+tar.workspace = true
+zstd.workspace = true
+
+[[bin]]
+name = "crorust"
+path = "src/main.rs"

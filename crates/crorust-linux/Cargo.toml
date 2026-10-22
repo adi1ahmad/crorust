@@ -1,0 +1,23 @@
+[package]
+name = "crorust-linux"
+description = "Pure-Rust library for assembling Linux AppDirs and SquashFS Type-2 AppImages for CroRust."
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+backhand.workspace = true
+crorust-common.workspace = true
+hex.workspace = true
+serde.workspace = true
+sha2.workspace = true
+tracing.workspace = true
+walkdir.workspace = true
+which.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

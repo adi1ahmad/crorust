@@ -1,0 +1,17 @@
+/target/
+/dist/
+.agents/
+.direnv
+.worktrees/
+# Cache directory (preserve directory structure for Trunk watcher canonicalization)
+/.cache/*
+!/.cache/.gitkeep
+# egui_kittest snapshot mismatch artifacts — never commit these
+tests/snapshots/*.new.png
+tests/snapshots/*.diff.png
+tests/snapshots/*.old.png
+
+# insta temporary snapshot files
+**/*.snap.new
+**/*.pending-snap
+

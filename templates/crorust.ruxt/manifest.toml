@@ -1,0 +1,389 @@
+# ==============================================================================
+# crorust.ruxt manifest.toml — Declarative Cross-Platform Build Configuration
+# Compatible with crorust (https://crorust.com)
+#
+# This file serves as both the active configuration for this project and the
+# canonical reference manual for all available build, toolchain, and platform
+# configuration options supported by the crorust workspace.
+# ==============================================================================
+
+# ── Root Application Identity ──────────────────────────────────────────────────
+# The primary identity and metadata for the application across all target platforms.
+package = "ruxt"            # Root package identifier (kebab-case or lowercase).
+name = "ruxt"               # Application system name (snake_case).
+bin = "ruxt-app"            # Target executable binary produced by Cargo.
+version = "0.1.0"           # Semantic version string (MAJOR.MINOR.PATCH).
+version_code = 1            # Monotonically increasing integer version code for app stores.
+
+# Path to the master application icon (PNG, SVG, or ICNS).
+# Automatically scaled and formatted for Android mipmaps, Apple icns/assets, and Windows MSIX.
+icon = "assets/icon_512.png"
+
+
+# ── Universal Toolchain Configuration ──────────────────────────────────────────
+# Manages hermetic SDK downloading, caching scope, and network behavior.
+[toolchain]
+# Cache storage tier for downloaded SDKs, sysroots, and compilers:
+# - "project" (default): Stages tools in `<project>/.cache/crorust/`. Cleanly reclaims 100% of
+#                        disk space when the project directory is deleted.
+# - "global": Stages tools in `~/.cache/crorust/`. Recommended for CI runners or multi-project setups.
+cache_scope = "project"
+
+# Offline mode enforcement:
+# - false (default): Automatically downloads and verifies missing SDKs and sysroots via streaming SHA-256.
+# - true: Strictly forbids any network access. Missing tools produce an immediate error.
+offline = false
+
+# Optional custom mirror URL base for downloading toolchains (e.g. corporate proxy or air-gapped mirror):
+# mirror_url = "https://mirror.internal.company.com/crorust/toolchains"
+
+# Optional Nix environment integration flag:
+# nix = false
+
+# Explicit custom directory override for caching toolchains (takes precedence over cache_scope):
+# cache_dir = "/shared/toolchains/crorust"
+
+# Custom Android platform SDK coordinate overrides for air-gapped enterprise mirrors or canary SDKs:
+# [toolchain.android.platform.35]
+# url = "https://dl.google.com/android/repository/platform-35_r02.zip"
+# sha256 = "0988cacad01b38a18a47bac14a0695f246bc76c1b06c0eeb8eb0dc825ab0c8e0"
+
+# Custom Android NDK sysroot archive override (e.g. corporate mirror or pre-extracted sysroot):
+# [toolchain.android.ndk]
+# url = "https://mirror.internal.company.com/crorust/Android.ndk.tar.zst"
+# sha256 = "70238c92eef8e3a0937a070eb0bc50682eb6fa1ad69c5e31768846bb473bcaee"
+
+# Custom Windows SDK & MSVC CRT sysroot archive override (bypasses automatic xwin upstream acquisition):
+# [toolchain.windows.sdk]
+# url = "https://mirror.internal.company.com/crorust/Windows.sdk.tar.zst"
+# sha256 = "a6b7d2bfeb89c6d3284ffcf47e5b15b367d3fae498c5be188cfc84307bcde802"
+
+# Custom Apple macOS & iOS SDK sysroot archive overrides:
+# [toolchain.apple.macos_sdk]
+# url = "https://mirror.internal.company.com/crorust/MacOSX.sdk.tar.zst"
+# sha256 = "1c24388e63a35b11202e8612140be045fbe2a0b3fce1723cbf9ba15fa8b33538"
+#
+# [toolchain.apple.ios_sdk]
+# url = "https://github.com/theos/sdks/releases/download/master-146e41f/iPhoneOS16.5.sdk.tar.xz"
+# sha256 = "5e0fd3f01266cce4ce012d4a99b38eb56578fca40d09edc81cd83dee958202fb"
+#
+# [toolchain.apple.ios_simulator_sdk]
+# url = "https://mirror.internal.company.com/crorust/iPhoneSimulator.sdk.tar.xz"
+# sha256 = "..."
+
+
+# ── Android Platform Configuration ─────────────────────────────────────────────
+# Targets Android APK and AAB packages. Standalone Tier 2 pipeline is active by default.
+[android]
+# Android SDK API levels:
+min_sdk = 21                # Minimum Android version supported (API 21 = Android 5.0 Lollipop).
+target_sdk = 34             # Target Android version tested against (API 34 = Android 14).
+compile_sdk = 35            # Compilation platform SDK level (API 35 = Android 15).
+
+# Direct Standalone Pipeline vs Gradle Fallback:
+# - false (default): Pure-Rust Standalone compilation (pure-Rust AXML/ARSC tables, PubGrub Maven
+#                    resolution, standalone kotlinc & D8 dexing, APK Signature Scheme v2).
+# - true: Legacy Gradle project synthesis and AGP build wrapper.
+use_gradle = false
+
+# Compilation toolchain versions:
+agp_version = "8.7.3"       # Android Gradle Plugin version (used when use_gradle = true).
+kotlin_version = "2.1.0"    # Hermetic Kotlin compiler version for compiling Kotlin sources.
+jvm_target = "17"           # Java Virtual Machine bytecode compatibility level ("17", "11", "8").
+
+# Optional pre-installed host toolchain path overrides (bypasses automatic hermetic toolchain downloads):
+# sdk = "/opt/android-sdk"
+# ndk = "/opt/android-ndk-r27b"
+# ndk_version = "27.2.12479018"
+
+# Ecosystem feature integrations:
+game_activity = false       # Enable Google GameActivity support (automatically injects games-activity and C++ wrapper).
+
+# Maven artifact repositories for resolving and unpacking Android library dependencies (.aar / .jar):
+# Supported formats:
+# 1. Standard: { standard = "google" | "mavenCentral" | "gradlePluginPortal" }
+# 2. Authenticated/Private: { maven = "<url>", username_env = "<ENV_VAR>", password_env = "<ENV_VAR>" }
+repositories = [
+    { standard = "google" },
+    { standard = "mavenCentral" },
+    { standard = "gradlePluginPortal" },
+    # { maven = "https://maven.pkg.github.com/my-org/packages", username_env = "GITHUB_ACTOR", password_env = "GITHUB_TOKEN" },
+]
+
+# Maven dependency coordinates solved via the PubGrub algorithm:
+dependencies = [
+    "androidx.games:games-activity:4.4.0",
+    "androidx.appcompat:appcompat:1.6.1",
+    "androidx.core:core-ktx:1.10.1",
+    "org.jetbrains.kotlin:kotlin-stdlib:[2.1.0]",
+]
+
+# Application assets packaged into the root of APK `assets/`:
+# Can be specified as simple directory/file path strings or extended mapping tables:
+# - Extended options:
+#     - path: Source filesystem path.
+#     - dest: Destination path inside APK `assets/`.
+#     - optional: If true, build succeeds even if the file is absent.
+#     - alignment: Entry byte alignment (e.g. 4096 for mmap) or "unaligned" or "compressed" (default).
+assets = [
+    "assets",
+    # { path = "assets/models/character.glb", dest = "models/character.glb", optional = false, alignment = 4096 },
+    # { path = "assets/config.json", optional = true, alignment = "unaligned" },
+    # { path = "assets/large_data.bin", dest = "data.bin", optional = true, alignment = "compressed" },
+]
+
+# Optional legacy Gradle execution settings (only active when use_gradle = true):
+# [android.gradle]
+# enabled = true
+# version = "8.7"           # Gradle distribution version.
+# distribution_url = "https://services.gradle.org/distributions/gradle-8.7-bin.zip"
+# jvm_args = "-Xmx2048m -Dfile.encoding=UTF-8"
+
+# Optional ADB runtime port forwarding for debugging and remote profiling:
+# [android.debug.reverse]
+# "tcp:8080" = "tcp:8080"   # Forward device port to host
+#
+# [android.debug.forward]
+# "tcp:5005" = "tcp:5005"   # Forward host port to device JDWP
+
+# Android Binary XML (AXML) Manifest descriptor:
+[android.manifest]
+package = "crorust.ruxt"    # Android application package ID (applicationId).
+# version_code = 1          # Overrides root version_code if specified.
+# version_name = "0.1.0"    # Overrides root version if specified.
+# compile_sdk_version = 35
+# compile_sdk_version_codename = 35
+# platform_build_version_code = 35
+# platform_build_version_name = 35
+
+[android.manifest.sdk]
+min_sdk_version = 21
+target_sdk_version = 34
+# max_sdk_version = 35
+
+# Custom permissions declared by this application:
+# [[android.manifest.permission]]
+# name = "com.example.ruxt.CUSTOM_PERMISSION"
+# protection_level = "signature" # Options: "normal", "dangerous", "signature", "signatureOrSystem"
+
+# Hardware and software features required or requested:
+# [[android.manifest.uses_feature]]
+# name = "android.hardware.camera"
+# required = false
+# version = 1
+# opengles_version = [3, 2] # Major and minor OpenGL ES version tuple
+
+# System permissions requested by this application:
+[[android.manifest.uses_permission]]
+name = "android.permission.INTERNET"
+# max_sdk_version = 34      # Optional maximum SDK level for which this permission is granted.
+
+[[android.manifest.uses_permission]]
+name = "android.permission.CAMERA"
+
+[android.manifest.application]
+label = "ruxt"              # Human-readable application label.
+debuggable = true           # Enables ADB debugging and JDWP thread attach.
+has_code = true             # Indicates application executes compiled Dalvik/ART DEX bytecode.
+theme = "@style/Theme.AppCompat.NoActionBar" # Application style theme.
+# icon = "@mipmap/ic_launcher"
+# app_component_factory = "androidx.core.app.CoreComponentFactory"
+# extract_native_libs = false # false enables 16KB/4KB page-aligned zero-copy mmap of .so libraries.
+
+[[android.manifest.application.meta_data]]
+name = "android.app.category"
+value = "productivity"
+
+[[android.manifest.application.meta_data]]
+name = "isGame"
+value = "false"
+
+# Optional Content Providers (e.g. androidx.startup):
+# [[android.manifest.application.providers]]
+# name = "androidx.startup.InitializationProvider"
+# authorities = "crorust.ruxt.androidx-startup"
+# exported = false
+# grant_uri_permissions = false
+# [[android.manifest.application.providers.meta_data]]
+# name = "androidx.lifecycle.ProcessLifecycleInitializer"
+# value = "androidx.startup"
+
+[[android.manifest.application.activities]]
+name = "crorust.ruxt.MainActivity"
+theme = "@style/Theme.AppCompat.NoActionBar"
+exported = true
+hardware_accelerated = true
+window_soft_input_mode = "adjustResize" # Options: "adjustResize", "adjustPan", "stateHidden", etc.
+config_changes = "orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+# launch_mode = "singleTop"             # Options: "standard", "singleTop", "singleTask", "singleInstance"
+# orientation = "unspecified"           # Options: "unspecified", "portrait", "landscape", "sensor"
+# color_mode = "default"                # Options: "default", "wideColorGamut", "hdr"
+
+[[android.manifest.application.activities.intent_filters]]
+actions = ["android.intent.action.MAIN"]
+categories = ["android.intent.category.LAUNCHER"]
+
+# Deep linking and custom URL scheme handling:
+# [[android.manifest.application.activities.intent_filters]]
+# actions = ["android.intent.action.VIEW"]
+# categories = ["android.intent.category.DEFAULT", "android.intent.category.BROWSABLE"]
+# [[android.manifest.application.activities.intent_filters.data]]
+# scheme = "https"
+# host = "crorust.com"
+# path_prefix = "/app"
+# mime_type = "application/json"
+
+
+# ── Linux Platform Configuration ───────────────────────────────────────────────
+# Targets desktop Linux AppImage bundles, AppDirs, and standalone portable archives.
+[linux]
+# C runtime library variant:
+# - "gnu" (default): Dynamically links against host glibc.
+# - "musl": Completely static, zero-dependency musl libc executable.
+libc = "gnu"
+
+# SquashFS packaging engine for AppImage generation:
+# - "auto" (default): Attempts fast host `mksquashfs` first, automatically falling back to pure-Rust backhand.
+# - "system": Requires host `mksquashfs` installed on PATH.
+# - "pure-rust": Pure-Rust in-process backhand compiler; requires zero host packages.
+# squashfs_backend = "auto"
+
+# AppImage SquashFS compression algorithm:
+# - "gzip" (default): Ultra-fast decompression and universal runtime compatibility.
+# - "xz": Higher compression ratio for smaller binary footprint.
+# compression = "gzip"
+
+
+# ── macOS Platform Configuration ───────────────────────────────────────────────
+# Targets Apple macOS `.app` bundles, Info.plist generation, codesign, and DMG images.
+[macos]
+sdk_version = "14.4"               # Target macOS SDK release version.
+minimum_system_version = "11.0"    # Minimum macOS runtime supported (LSMinimumSystemVersion).
+bundle_identifier = "crorust.ruxt" # Apple reverse-DNS bundle identifier (CFBundleIdentifier).
+
+# Optional pre-installed macOS SDK directory override:
+# sdk = "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk"
+
+# Optional Info.plist property overrides and custom keys:
+# [macos.info]
+# CFBundleDisplayName = "ruxt"
+# CFBundleName = "ruxt"
+# CFBundleExecutable = "ruxt-app"
+# CFBundlePackageType = "APPL"
+# CFBundleShortVersionString = "0.1.0"
+# CFBundleVersion = "0.1.0"
+# CFBundleIconFile = "AppIcon"
+# CFBundleIconFiles = ["AppIcon"]
+# CFBundleSupportedPlatforms = ["MacOSX"]
+# CFBundleDevelopmentRegion = "en"
+# LSMinimumSystemVersion = "11.0"
+# NSHighResolutionCapable = true
+# NSCameraUsageDescription = "Camera access for desktop Ruxt capture."
+
+
+# ── iOS Platform Configuration ─────────────────────────────────────────────────
+# Targets Apple iOS `.app` bundles, simulators, codesigning, and IPA packages.
+[ios]
+sdk_version = "17.4"               # Target iOS SDK release version.
+minimum_os_version = "15.0"        # Minimum iOS version supported (MinimumOSVersion).
+bundle_identifier = "crorust.ruxt" # Apple reverse-DNS bundle identifier (CFBundleIdentifier).
+
+# Target execution environment:
+# - false (default): Compiles for physical iOS hardware (aarch64-apple-ios).
+# - true: Compiles for iOS Simulator (aarch64-apple-ios-sim or x86_64-apple-ios).
+simulator = false
+
+# Optional pre-installed iOS SDK directory override:
+# sdk = "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk"
+
+# Optional path to compiled Assets.car asset catalog:
+# assets_car = "assets/Assets.car"
+
+# Optional Info.plist property overrides and mobile capabilities:
+# [ios.info]
+# CFBundleDisplayName = "ruxt"
+# MinimumOSVersion = "15.0"
+# LSRequiresIPhoneOS = true
+# UIDeviceFamily = [1, 2] # 1: iPhone, 2: iPad
+# UILaunchStoryboardName = ""
+# UIRequiredDeviceCapabilities = ["arm64"]
+# "UISupportedInterfaceOrientations~iphone" = [
+#     "UIInterfaceOrientationPortrait",
+#     "UIInterfaceOrientationLandscapeLeft",
+#     "UIInterfaceOrientationLandscapeRight",
+# ]
+# "UISupportedInterfaceOrientations~ipad" = [
+#     "UIInterfaceOrientationPortrait",
+#     "UIInterfaceOrientationPortraitUpsideDown",
+#     "UIInterfaceOrientationLandscapeLeft",
+#     "UIInterfaceOrientationLandscapeRight",
+# ]
+
+
+# ── Windows Platform Configuration ─────────────────────────────────────────────
+# Targets Microsoft Windows MSIX packaging, PRI indexing, and PKCS#7 Appx signatures.
+[windows]
+sdk_version = "10.0.22621.0"       # Target Windows SDK build number.
+publisher = "CN=crorust"           # Publisher certificate subject DN for Authenticode signing.
+
+# Optional pre-installed Windows SDK directory override:
+# sdk = "C:\\Program Files (x86)\\Windows Kits\\10"
+
+# Windows MSIX AppxManifest.xml specification:
+# [windows.manifest.identity]
+# name = "crorust.ruxt"
+# version = "0.1.0.0"
+# publisher = "CN=crorust"
+# processor_architecture = "x64" # Options: "x64", "x86", "arm64", "neutral"
+#
+# [windows.manifest.properties]
+# display_name = "ruxt"
+# publisher_display_name = "crorust"
+# logo = "Assets\\Logo.png"
+# description = "ruxt cross-platform native application"
+#
+# [[windows.manifest.resources.resource]]
+# language = "en-US"
+#
+# [[windows.manifest.dependencies.target_device_family]]
+# name = "Windows.Desktop"
+# min_version = "10.0.0.0"
+# max_version = "10.0.22621.0"
+#
+# [[windows.manifest.capabilities]]
+# capability = { name = "internetClient" } # Variants: capability, restricted, device
+# # restricted = { name = "runFullTrust" }
+# # device = { name = "location" }
+#
+# [[windows.manifest.applications.application]]
+# id = "App"
+# executable = "ruxt-app.exe"
+# entry_point = "Windows.FullTrustApplication"
+#
+# [windows.manifest.applications.application.visual_elements]
+# display_name = "ruxt"
+# description = "ruxt"
+# background_color = "#1E1E1E"
+# square_150x150_logo = "Assets\\Logo150x150.png"
+# square_44x44_logo = "Assets\\Logo44x44.png"
+
+
+# ── Web Platform Configuration (WASM) ──────────────────────────────────────────
+# Targets browser-based WebAssembly (wasm32-unknown-unknown) with embedded dev server.
+[web]
+port = 8080                         # Local development HTTP server port.
+open = false                        # Automatically launch default system browser on server start.
+dist = ".cache/web-static/dist"     # Output directory for compiled WebAssembly, JavaScript, and HTML.
+address = "127.0.0.1"               # Local address to bind ("127.0.0.1" for local, "0.0.0.0" for LAN).
+# watch = [                         # Explicit source files and directories to watch for live-reload.
+#     "src",
+#     "index.html",
+#     "Cargo.toml",
+#     "assets",
+# ]
+watch_ignore = [                    # Paths and directories ignored during live-reload file watching.
+    ".cache",
+    "target",
+]
+
+

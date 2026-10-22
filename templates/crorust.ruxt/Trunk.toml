@@ -1,0 +1,13 @@
+[build]
+target = "index.html"
+dist = ".cache/web-static/dist"
+
+[watch]
+# Explicitly watch source files and assets to prevent change storms on Linux, macOS, and Windows
+watch = ["src", "index.html", "Cargo.toml", "assets"]
+ignore = [".cache", "target"]
+
+[serve]
+port = 8080
+open = false
+

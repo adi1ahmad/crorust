@@ -1,0 +1,25 @@
+# Enforce consistent LF line endings across all checkouts (Linux, macOS, Windows)
+* text=auto eol=lf
+
+# Embedded template files maintain LF line endings for text files
+templates/** text=auto eol=lf
+
+# Explicit binary file declarations to prevent CRLF/LF corruption of assets
+*.png -text -eol binary
+*.jpg -text -eol binary
+*.jpeg -text -eol binary
+*.gif -text -eol binary
+*.ico -text -eol binary
+*.icns -text -eol binary
+*.wasm -text -eol binary
+*.jar -text -eol binary
+*.aar -text -eol binary
+*.zip -text -eol binary
+*.tar -text -eol binary
+*.zst -text -eol binary
+*.gz -text -eol binary
+*.br -text -eol binary
+*.so -text -eol binary
+*.dylib -text -eol binary
+*.dll -text -eol binary
+*.exe -text -eol binary

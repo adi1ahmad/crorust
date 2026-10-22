@@ -1,0 +1,31 @@
+[package]
+name = "crorust-windows"
+description = "Pure-Rust library for creating Windows MSIX packages, MRM PRI resource tables, and portable directories for CroRust."
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+base64.workspace = true
+byteorder.workspace = true
+crorust-common.workspace = true
+hex.workspace = true
+quick-xml.workspace = true
+rasn.workspace = true
+rasn-cms.workspace = true
+rasn-pkix.workspace = true
+rayon.workspace = true
+image = { workspace = true, features = ["png"] }
+rsa.workspace = true
+serde.workspace = true
+sha2.workspace = true
+zip.workspace = true
+
+[dev-dependencies]
+image = { workspace = true, features = ["png"] }
+rsa.workspace = true
+tempfile.workspace = true

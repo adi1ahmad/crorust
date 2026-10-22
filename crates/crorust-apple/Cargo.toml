@@ -1,0 +1,32 @@
+[package]
+name = "crorust-apple"
+description = "Library for assembling and codesigning macOS, iOS, visionOS, and tvOS app bundles for CroRust."
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+apple-codesign.workspace = true
+crorust-common.workspace = true
+hex.workspace = true
+icns.workspace = true
+pkcs8.workspace = true
+plist.workspace = true
+rasn.workspace = true
+rasn-cms.workspace = true
+serde.workspace = true
+sha2.workspace = true
+tracing.workspace = true
+walkdir.workspace = true
+x509-certificate.workspace = true
+
+[dev-dependencies]
+base64.workspace = true
+flate2.workspace = true
+image = { workspace = true, features = ["png"] }
+tempfile.workspace = true
+tracing-subscriber.workspace = true

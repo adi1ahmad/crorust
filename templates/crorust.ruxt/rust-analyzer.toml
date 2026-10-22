@@ -1,0 +1,42 @@
+# ============================================================================
+# rust-analyzer.toml
+# ============================================================================
+
+# Disable automatic cargo check on save (heavy CPU; trigger manually instead)
+checkOnSave = false
+
+# --------------------------------------------------------------------------#
+# Cargo
+# --------------------------------------------------------------------------#
+[cargo]
+buildScripts.enable = true
+buildScripts.rebuildOnSave = false
+autoreload = false
+targetDir = true
+allTargets = false
+
+
+
+# --------------------------------------------------------------------------#
+# Diagnostics
+# --------------------------------------------------------------------------#
+[diagnostics]
+enable = true
+experimental.enable = false
+styleLints.enable = false
+
+# --------------------------------------------------------------------------#
+# Completion
+# --------------------------------------------------------------------------#
+[completion]
+autoimport.enable = false
+termSearch.enable = false
+termSearch.fuel = 200
+limit = 50
+postfix.enable = false
+
+# --------------------------------------------------------------------------#
+# Assist
+# --------------------------------------------------------------------------#
+[assist]
+termSearch.fuel = 200

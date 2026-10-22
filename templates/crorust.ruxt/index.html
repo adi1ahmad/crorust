@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>crorust & ruxt — Multi-Host Cross-Compilation Platform & Native GUI Framework</title>
+    
+    <!-- Primary Meta Tags -->
+    <meta name="title" content="crorust & ruxt — Multi-Host Cross-Compilation Platform & Native GUI Framework" />
+    <meta name="description" content="Compile, package, and cryptographically sign native applications for Android, iOS, macOS, Windows, Linux, and WebAssembly without external IDEs." />
+    <meta name="keywords" content="rust, cross-compilation, egui, wgpu, winit, android, apple, windows, msix, apk, appimage, webassembly" />
+    <meta name="author" content="Adil Ahmad (crorust.com)" />
+    <meta name="theme-color" content="#121214" />
+
+    <!-- Open Graph / Facebook / Discord -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://crorust.com/" />
+    <meta property="og:title" content="crorust & ruxt — Multi-Host Cross-Compilation Platform & Native GUI Framework" />
+    <meta property="og:description" content="Compile, package, and cryptographically sign native applications for all platforms using a single unified Rust binary." />
+    <meta property="og:image" content="https://crorust.com/assets/icon_512.png" />
+
+    <!-- Twitter Cards -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://crorust.com/" />
+    <meta property="twitter:title" content="crorust & ruxt — Multi-Host Cross-Compilation Platform & Native GUI Framework" />
+    <meta property="twitter:description" content="Compile, package, and cryptographically sign native applications for all platforms without external IDEs." />
+    <meta property="twitter:image" content="https://crorust.com/assets/icon_512.png" />
+
+    <link rel="icon" type="image/png" href="assets/icon.png" />
+    <link rel="apple-touch-icon" href="assets/icon_512.png" />
+
+    <style>
+        html { touch-action: manipulation; }
+        body {
+            background: #121214;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .loading-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #e6edf3;
+            text-align: center;
+        }
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(56, 139, 253, 0.2);
+            border-top: 4px solid #388bfd;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+
+    <link data-trunk rel="rust" href="Cargo.toml" data-bin="ruxt-app" data-wasm-opt="2" />
+    <link rel="manifest" href="assets/manifest.webmanifest" />
+    <link data-trunk rel="copy-file" href="assets/manifest.webmanifest" data-target-path="assets" />
+    <link data-trunk rel="copy-file" href="assets/icon.png" data-target-path="assets" />
+    <link data-trunk rel="copy-file" href="assets/icon_512.png" data-target-path="assets" />
+    <link data-trunk rel="copy-file" href="assets/ruxt-logo.svg" data-target-path="assets" />
+    <link data-trunk rel="copy-file" href="sw.js" />
+</head>
+<body>
+    <canvas id="the_canvas_id"></canvas>
+    <div class="loading-container" id="loading_indicator">
+        <div class="spinner"></div>
+        <p style="font-size: 16px; font-weight: 600; margin: 0 0 6px 0;">Loading crorust & ruxt…</p>
+        <p style="font-size: 13px; color: #8b949e; margin: 0;">Initializing WebAssembly runtime & GPU surface</p>
+    </div>
+
+    <noscript>
+        <div class="loading-container">
+            <p>JavaScript and WebAssembly are required to run crorust & ruxt.</p>
+        </div>
+    </noscript>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch((err) => {
+                    console.warn('Service worker registration failed:', err);
+                });
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+[package]
+name = "ruxt"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+authors = ["Adil Ahmad <adilahmad@tuta.io>"]
+description = "crorust.ruxt — cross-platform application template by Adil Ahmad (crorust.com)"
+license = "MIT OR Apache-2.0"
+publish = false
+default-run = "ruxt-app"
+
+[lib]
+name = "ruxt"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "ruxt-app"
+path = "src/main.rs"
+
+[features]
+default = ["wgpu", "persistence", "wayland", "x11", "markdown", "network", "media_viewer"]
+
+# Rendering backends:
+wgpu = ["eframe/wgpu", "dep:bytemuck"]
+glow = ["eframe/glow"]
+
+# Linux windowing backends:
+wayland = ["eframe/wayland"]
+x11 = ["eframe/x11"]
+
+# State persistence:
+persistence = [
+    "eframe/persistence",
+    "egui/persistence",
+    "egui_extras/serde",
+    "serde",
+]
+
+# Application features:
+accessibility = ["dep:accesskit", "dep:accesskit_consumer", "eframe/accesskit"]
+markdown = []
+network = ["dep:ehttp", "image/jpeg", "dep:poll-promise", "egui_extras/image"]
+media_viewer = ["image/jpeg", "egui_extras/all_loaders", "dep:rfd"]
+puffin = ["dep:puffin", "dep:puffin_http", "profiling/profile-with-puffin"]
+serde = ["dep:serde", "egui/serde"]
+syntax_highlighting = ["egui_extras/syntect"]
+
+[dependencies]
+# Core framework libraries imported strictly from crates.io:
+eframe = { version = "0.36.2", default-features = false, features = [
+    "web_screen_reader",
+] }
+egui = { version = "0.36.2", features = ["callstack", "default_fonts", "color-hex"] }
+egui_extras = { version = "0.36.2", features = ["default", "image", "svg", "datepicker"] }
+
+image = { version = "0.25", default-features = false, features = ["png"] }
+jiff = { version = "0.2", features = ["std", "tz-system", "js"] }
+log = "0.4"
+profiling = "1.0"
+
+# Optional dependencies:
+accesskit = { version = "0.24", optional = true }
+accesskit_consumer = { version = "0.35", optional = true }
+bytemuck = { version = "1.25", optional = true }
+ehttp = { version = "0.7", optional = true }
+poll-promise = { version = "0.3", optional = true }
+puffin = { version = "0.20", optional = true }
+puffin_http = { version = "0.17", optional = true }
+serde = { version = "1.0", features = ["derive"], optional = true }
+
+[dev-dependencies]
+egui_kittest = { version = "0.36.2", features = ["snapshot", "wgpu"] }
+
+# Native desktop dependencies:
+[target.'cfg(all(not(target_arch = "wasm32"), not(target_os = "android"), not(target_os = "ios")))'.dependencies]
+eframe = { version = "0.36.2", features = ["inspection"] }
+env_logger = { version = "0.11", features = ["auto-color", "humantime"] }
+mimalloc = "0.1"
+rfd = { version = "0.17", optional = true }
+
+# WebAssembly dependencies:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = [
+    "BinaryType",
+    "Blob",
+    "Document",
+    "Element",
+    "HtmlCanvasElement",
+    "Location",
+    "Window",
+] }
+
+# Android dependencies:
+[target.'cfg(target_os = "android")'.dependencies]
+android_logger = "0.15"
+jni = "0.22"
+winit = { version = "0.30", features = ["android-game-activity"] }
+
+[package.metadata.android]
+build_targets = ["aarch64-linux-android"]
+
+[package.metadata.android.sdk]
+min_sdk_version = 23
+target_sdk_version = 34
+
+

@@ -1,0 +1,28 @@
+[package]
+name = "crorust-common"
+description = "Shared cryptographic, image scaling, and packaging utilities for CroRust."
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+byteorder.workspace = true
+dunce.workspace = true
+hex.workspace = true
+image.workspace = true
+pem.workspace = true
+rasn.workspace = true
+rasn-pkix.workspace = true
+rayon.workspace = true
+rsa.workspace = true
+sha2.workspace = true
+tracing.workspace = true
+walkdir.workspace = true
+zip = { workspace = true, features = ["deflate"] }
+
+[dev-dependencies]
+tempfile.workspace = true

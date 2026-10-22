@@ -1,0 +1,62 @@
+# =============================================================================
+# HARD RULES (do not regress)
+# 1. The dev toolchain is NIGHTLY (rust-toolchain.toml; nix shell via
+#    rust-overlay resolves the exact same build). `-Z*` flags below are legal
+#    because of that. CI installs the same pinned nightly and therefore USES
+#    these flags, so CI must not export an empty RUSTFLAGS. If the
+#    toolchain is ever moved back to stable, all `-Z*` flags must be removed
+#    from this file first.
+# 2. Linker flags must stay namespaced per target triple. Never move them into
+#    the global `[build]` table — that breaks Android NDK and wasm32 linking.
+# 3. `[build] target-dir` must stay `.cache/target`: builds inside AND
+#    outside `nix develop` share one artifact cache (the shell hook exports
+#    the same CARGO_TARGET_DIR).
+# =============================================================================
+
+[build]
+# Single shared artifact directory for every environment (see rule 3).
+target-dir = ".cache/target"
+# Nightly parallel frontend (applies to targets WITHOUT their own rustflags
+# table below — target-level tables REPLACE this value, they do not merge).
+# The flag is `--jobs-frontend` (the rename of `-Zthreads`), gated behind
+# `-Zunstable-options`; there is NO `-Zjobs-frontend` form.
+rustflags = ["-Zunstable-options", "--jobs-frontend=0"]
+
+# Linux desktop (x86_64): wrapped `cc` driver + LLVM lld for fast relinks.
+# MUST be `cc`, not `clang`: inside `nix develop` the shell hook prepends the
+# UNWRAPPED nix clang to PATH, which never injects a `-dynamic-linker` — lld
+# then emits binaries with no PT_INTERP header that SIGSEGV on launch (build
+# scripts, proc-macros and the app binary alike). The wrapped `cc` (nix
+# gcc-wrapper / system cc) always injects the correct dynamic linker.
+[target.x86_64-unknown-linux-gnu]
+linker = "cc"
+rustflags = ["-Zunstable-options", "--jobs-frontend=0", "-C", "link-arg=-fuse-ld=lld"]
+
+# Linux desktop (aarch64): clang cross-driver + lld (rustc passes --target).
+[target.aarch64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-Zunstable-options", "--jobs-frontend=0", "-C", "link-arg=-fuse-ld=lld"]
+
+[target.wasm32-unknown-unknown]
+rustflags = [
+    '--cfg=web_sys_unstable_apis',
+    '--cfg=getrandom_backend="wasm_js"',
+]
+
+# =============================================================================
+# Shared compilation cache (sccache) — intentionally NOT enabled by default.
+# sccache cannot cache incremental builds of the local crate and only pays off
+# after `cargo clean` or when juggling multiple worktrees/target dirs. Enable
+# per shell with `RUSTC_WRAPPER=sccache` once installed, or permanently with:
+#   [build]
+#   rustc-wrapper = "sccache"
+# =============================================================================
+
+# =============================================================================
+# Developer workflow aliases
+# =============================================================================
+[alias]
+# Full type/borrow check of lib + bin + tests:
+fast-check = "check --all-targets"
+# Fast unit-test loop (pair with SKIP_SNAPSHOTS=1 during refactors):
+fast-test = "test --lib"

@@ -1,0 +1,25 @@
+[package]
+name = "crorust-mvn"
+description = "Library for fetching and resolving maven dependencies for CroRust."
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+crorust-common.workspace = true
+log.workspace = true
+pubgrub.workspace = true
+quick-xml.workspace = true
+rayon.workspace = true
+serde = { workspace = true, features = ["rc"] }
+toml.workspace = true
+zip.workspace = true
+
+
+[dev-dependencies]
+base64.workspace = true
+tempfile.workspace = true

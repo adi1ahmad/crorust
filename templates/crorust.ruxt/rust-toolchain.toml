@@ -1,0 +1,19 @@
+[toolchain]
+# Pinned to a tested nightly for reproducible CI/images; bump together with
+# RUST_NIGHTLY in .github/workflows/ci.yml.
+channel = "nightly-2026-10-15"
+targets = [
+  "wasm32-unknown-unknown",
+  "aarch64-linux-android",
+  "x86_64-linux-android",
+  "armv7-linux-androideabi",
+  "aarch64-apple-ios",
+  "x86_64-apple-darwin",
+  "aarch64-apple-darwin",
+  "x86_64-unknown-linux-gnu",
+  "aarch64-unknown-linux-gnu",
+  "x86_64-pc-windows-gnu",
+  "x86_64-pc-windows-msvc",
+]
+components = ["rust-src", "rust-analyzer", "clippy", "rustfmt"]
+profile = "default"

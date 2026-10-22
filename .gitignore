@@ -1,0 +1,25 @@
+/target
+result
+result-*
+.cache
+AGENTS.md
+# Certificates, keys, and provisioning profiles
+*.pem
+*.p12
+*.pfx
+*.keystore
+*.jks
+*.mobileprovision
+debug.pem
+embedded.mobileprovision
+
+# Whitelist only the bundled dummy test and debug certificates required at compile-time
+!crates/crorust-android/assets/debug.pem
+!crates/crorust-windows/assets/debug.pem
+
+# Local CI diagnostic logs and downloaded run artifacts
+/.ci-logs/
+plans/
+
+# CI/local install output (cargo install --root . / Tier 2 staging)
+/bin/

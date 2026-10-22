@@ -1,0 +1,381 @@
+name: "Dogfood build (one host -> target leg)"
+description: >-
+  Builds, verifies, stages and caches one crorust dogfood leg. Shared by the three
+  tier4-dogfood-* jobs so the 18-leg matrix has a single implementation.
+
+inputs:
+  platform:
+    description: "Target platform (linux, macos, ios, android, windows, web)"
+    required: true
+  arch:
+    description: "Target architecture (x64, arm64, ...)"
+    required: true
+  cli_artifact:
+    description: "Name of the Tier 2 CLI artifact to download"
+    required: true
+  host_slug:
+    description: "Host slug used in the uploaded artifact name (e.g. linux-x64)"
+    required: true
+  nightly:
+    description: "Pinned Rust nightly (must match templates/crorust.ruxt/rust-toolchain.toml)"
+    required: true
+  cache_dir:
+    description: "Absolute crorust toolchain cache directory"
+    required: true
+  tool_cache_key:
+    description: "Primary cache key for the toolchain cache"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Download crorust CLI artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.cli_artifact }}
+        path: bin
+
+    - name: Ensure CLI executable permission (Unix)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: chmod +x bin/crorust
+
+    - name: Install pinned Rust nightly (template toolchain)
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ inputs.nightly }}
+        targets: wasm32-unknown-unknown,aarch64-linux-android,x86_64-linux-android,armv7-linux-androideabi,aarch64-apple-ios,x86_64-apple-darwin,aarch64-apple-darwin,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu,x86_64-pc-windows-gnu,x86_64-pc-windows-msvc
+        components: rust-src,rust-analyzer,clippy,rustfmt
+
+    - name: Optimize Windows File I/O (Disable Defender Scanning)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $exclusions = @(
+          "$env:GITHUB_WORKSPACE",
+          "$env:RUNNER_TEMP",
+          "$env:TEMP",
+          "$env:USERPROFILE\.cargo",
+          "$env:USERPROFILE\.rustup"
+        )
+        Get-PSDrive -PSProvider FileSystem | ForEach-Object { $exclusions += $_.Root }
+        $exclusions = $exclusions | Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique
+
+        $regPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Exclusions\Paths"
+        if (-not (Test-Path $regPath)) {
+          New-Item -Path $regPath -Force | Out-Null
+        }
+        foreach ($path in $exclusions) {
+          Add-MpPreference -ExclusionPath $path -ErrorAction SilentlyContinue
+          New-ItemProperty -Path $regPath -Name $path -Value 0 -PropertyType DWORD -Force -ErrorAction SilentlyContinue | Out-Null
+        }
+        Set-MpPreference -DisableRealtimeMonitoring $true -ErrorAction SilentlyContinue
+
+        Write-Host "Active Windows Defender exclusions:"
+        (Get-MpPreference).ExclusionPath
+
+    - name: Install Host Dependencies (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+          clang \
+          lld \
+          llvm \
+          cpio \
+          libarchive-tools \
+          libasound2-dev \
+          libudev-dev \
+          squashfs-tools \
+          libwayland-dev \
+          libx11-dev \
+          libxkbcommon-dev \
+          libxkbcommon-x11-0 \
+          xvfb \
+          unzip \
+          libgl1-mesa-dri \
+          mesa-vulkan-drivers \
+          libgl1 \
+          libegl1
+
+    - name: Install Upstream LLVM (macOS host for Linux/Windows cross-builds)
+      if: runner.os == 'macOS' && (inputs.platform == 'linux' || inputs.platform == 'windows')
+      shell: bash
+      run: |
+        LLVM15="$(brew --prefix llvm@15 2>/dev/null || true)"
+        if [ -n "$LLVM15" ] && [ -x "$LLVM15/bin/ld64.lld" ] && [ -x "$LLVM15/bin/lld-link" ]; then
+          LLVM_PREFIX="$LLVM15"
+        else
+          HOMEBREW_NO_AUTO_UPDATE=1 brew install llvm
+          LLVM_PREFIX="$(brew --prefix llvm)"
+        fi
+        echo "$LLVM_PREFIX/bin" >> "$GITHUB_PATH"
+        "$LLVM_PREFIX/bin/clang" --version
+        "$LLVM_PREFIX/bin/ld.lld" --version
+
+    - name: Install Host Dependencies (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        if (Test-Path "C:\Program Files\LLVM\bin") {
+          Add-Content $env:GITHUB_PATH "C:\Program Files\LLVM\bin"
+        }
+
+    - name: Restore crorust toolchain cache
+      id: crorust-tools
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ inputs.cache_dir }}
+        key: ${{ inputs.tool_cache_key }}
+        restore-keys: |
+          crorust-tools-v2-${{ runner.os }}-${{ inputs.platform }}-
+          crorust-tools-v2-${{ runner.os }}-
+
+    - name: Configure Cargo Cache for Template
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: "templates/crorust.ruxt -> .cache/target"
+        shared-key: "template-v2-${{ runner.os }}-${{ inputs.platform }}-${{ inputs.arch }}"
+        cache-on-failure: false
+        save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+
+    - name: Install Trunk for Web builds (Linux, cached)
+      if: runner.os == 'Linux' && inputs.platform == 'web'
+      shell: bash
+      run: |
+        if command -v trunk >/dev/null 2>&1; then
+          trunk --version
+          exit 0
+        fi
+        url="https://github.com/trunk-rs/trunk/releases/download/v0.21.8/trunk-x86_64-unknown-linux-gnu.tar.gz"
+        curl -sSfL "$url" -o /tmp/trunk.tar.gz
+        echo "cd9fb2822c9f0ae111737500c179226cb080241ac55002c1db7344aa51a97fec  /tmp/trunk.tar.gz" | sha256sum -c -
+        mkdir -p "$HOME/.cargo/bin"
+        tar -xzf /tmp/trunk.tar.gz -C "$HOME/.cargo/bin"
+        trunk --version
+
+    - name: Install Trunk for Web builds (macOS, cached)
+      if: runner.os == 'macOS' && inputs.platform == 'web'
+      shell: bash
+      run: |
+        if command -v trunk >/dev/null 2>&1; then
+          trunk --version
+          exit 0
+        fi
+        url="https://github.com/trunk-rs/trunk/releases/download/v0.21.8/trunk-aarch64-apple-darwin.tar.gz"
+        curl -sSfL "$url" -o /tmp/trunk.tar.gz
+        echo "934e2fba770cfc20b4e3498e35fbe8a03b0e6e60580cdc36eb070002834bc208  /tmp/trunk.tar.gz" | shasum -a 256 -c -
+        mkdir -p "$HOME/.cargo/bin"
+        tar -xzf /tmp/trunk.tar.gz -C "$HOME/.cargo/bin"
+        trunk --version
+
+    - name: Install Trunk for Web builds (Windows, cached)
+      if: runner.os == 'Windows' && inputs.platform == 'web'
+      shell: pwsh
+      run: |
+        if (Get-Command trunk -ErrorAction SilentlyContinue) {
+          trunk --version
+          exit 0
+        }
+        $url = "https://github.com/trunk-rs/trunk/releases/download/v0.21.8/trunk-x86_64-pc-windows-msvc.zip"
+        $zip = Join-Path $env:TEMP "trunk.zip"
+        Invoke-WebRequest -Uri $url -OutFile $zip
+        $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+        if ($hash -ne "deb0db2a660b8e9ea3064a3862822e099fd01be06424d3125dbf917382195131") {
+          throw "trunk checksum mismatch: $hash"
+        }
+        $dest = Join-Path $env:USERPROFILE ".cargo\bin"
+        New-Item -ItemType Directory -Force -Path $dest | Out-Null
+        Expand-Archive $zip -DestinationPath $dest -Force
+        trunk --version
+
+    - name: Record toolchain state before build
+      shell: bash
+      env:
+        CRORUST_CACHE_DIR: ${{ inputs.cache_dir }}
+      run: |
+        if [ "${{ runner.os }}" = "Windows" ]; then CRORUST="./bin/crorust.exe"; else CRORUST="./bin/crorust"; fi
+        {
+          echo "### Toolchain before build: ${{ runner.os }} -> ${{ inputs.platform }}"
+          echo '```text'
+          "$CRORUST" i --project templates/crorust.ruxt --cache-dir "${{ inputs.cache_dir }}" 2>&1 | head -n 80 || true
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Build templates/crorust.ruxt
+      shell: bash
+      env:
+        CRORUST_CACHE_DIR: ${{ inputs.cache_dir }}
+      run: |
+        if [ "${{ runner.os }}" = "Windows" ]; then CRORUST="./bin/crorust.exe"; else CRORUST="./bin/crorust"; fi
+        "$CRORUST" build \
+          --project templates/crorust.ruxt \
+          --platform ${{ inputs.platform }} \
+          --arch ${{ inputs.arch }} \
+          --cache-dir "${{ inputs.cache_dir }}" \
+          --release \
+          --verbose
+
+    - name: Prune raw archives before caching
+      if: success()
+      shell: bash
+      run: |
+        rm -rf "${{ inputs.cache_dir }}/download/"* "${{ inputs.cache_dir }}/downloads/"* 2>/dev/null || true
+
+    - name: Save crorust toolchain cache
+      if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && steps.crorust-tools.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ inputs.cache_dir }}
+        key: ${{ steps.crorust-tools.outputs.cache-primary-key }}
+
+    - name: Report cache sizes
+      if: always()
+      shell: bash
+      run: |
+        {
+          echo "### Cache sizes: ${{ runner.os }} -> ${{ inputs.platform }}"
+          du -sh "${{ inputs.cache_dir }}" 2>/dev/null || true
+          du -sh templates/crorust.ruxt/.cache/target 2>/dev/null || true
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Verify required host tools
+      shell: bash
+      run: |
+        case "${{ inputs.platform }}" in
+          android) NEED=unzip ;;
+          web)     NEED="" ;;
+          *)       NEED=file ;;
+        esac
+        if [ -n "$NEED" ] && ! command -v "$NEED" >/dev/null 2>&1; then
+          echo "::error::Required host tool '$NEED' is not available on ${{ runner.os }}."
+          exit 1
+        fi
+
+    - name: Verify Generated Artifact (Linux AppDir & Binary Inspection)
+      if: inputs.platform == 'linux'
+      shell: bash
+      env:
+        LIBGL_ALWAYS_SOFTWARE: "1"
+        MESA_LOADER_DRIVER_OVERRIDE: "llvmpipe"
+      run: |
+        APPDIR=$(find templates/crorust.ruxt -type d -name "*AppDir" 2>/dev/null | head -n 1)
+        test -n "$APPDIR" && test -d "$APPDIR"
+        test -f "$APPDIR/AppRun"
+        chmod +x "$APPDIR/AppRun" || true
+        file -L "$APPDIR/AppRun" | grep -E "ELF 64-bit"
+        if [ "${{ runner.os }}" = "Linux" ]; then
+          timeout 2s xvfb-run -a -s "-screen 0 1024x768x24 +extension GLX" "$APPDIR/AppRun" || [ $? -eq 124 ]
+        fi
+        echo "Linux AppDir verified successfully at $APPDIR." >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Verify Generated Artifact (macOS App Bundle & Plist)
+      if: inputs.platform == 'macos'
+      shell: bash
+      run: |
+        APP_BUNDLE=$(find templates/crorust.ruxt -type d -path "*/macos/*" -name "*.app" 2>/dev/null | head -n 1)
+        test -n "$APP_BUNDLE" && test -d "$APP_BUNDLE"
+        PLIST="$APP_BUNDLE/Contents/Info.plist"
+        test -f "$PLIST"
+        if [ "${{ runner.os }}" = "Windows" ]; then PYTHON=python; else PYTHON=python3; fi
+        "$PYTHON" -c "import plistlib; p = plistlib.load(open('$PLIST', 'rb')); assert 'CFBundleIdentifier' in p"
+        file "$APP_BUNDLE/Contents/MacOS/"* | grep -E "Mach-O 64-bit"
+        echo "macOS App Bundle verified successfully at $APP_BUNDLE." >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Verify Generated Artifact (iOS App Bundle & Plist)
+      if: inputs.platform == 'ios'
+      shell: bash
+      run: |
+        IOS_APP=$(find templates/crorust.ruxt -type d -path "*/ios/*" -name "*.app" 2>/dev/null | head -n 1)
+        test -n "$IOS_APP" && test -d "$IOS_APP"
+        PLIST="$IOS_APP/Info.plist"
+        test -f "$PLIST"
+        if [ "${{ runner.os }}" = "Windows" ]; then PYTHON=python; else PYTHON=python3; fi
+        "$PYTHON" -c "import plistlib; p = plistlib.load(open('$PLIST', 'rb')); assert 'CFBundleIdentifier' in p"
+        file "$IOS_APP/"* | grep -E "Mach-O 64-bit"
+        echo "iOS App Bundle verified successfully at $IOS_APP." >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Verify Generated Artifact (Android APK Deep Inspection)
+      if: inputs.platform == 'android'
+      shell: bash
+      run: |
+        APK_FILE=$(find templates/crorust.ruxt -type f -name "*.apk" 2>/dev/null | head -n 1)
+        test -n "$APK_FILE" && test -f "$APK_FILE"
+        SIZE=$(stat -c%s "$APK_FILE" 2>/dev/null || stat -f%z "$APK_FILE")
+        echo "Android APK Size: $SIZE bytes ($APK_FILE)"
+        test "$SIZE" -gt 500000
+        unzip -tq "$APK_FILE"
+        unzip -l "$APK_FILE" | grep -E "classes\.dex"
+        unzip -l "$APK_FILE" | grep -E "AndroidManifest\.xml"
+        unzip -l "$APK_FILE" | grep -E "resources\.arsc"
+        echo "Android APK verified successfully at $APK_FILE." >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Verify Generated Artifact (Windows Executable / MSIX)
+      if: inputs.platform == 'windows'
+      shell: bash
+      run: |
+        WIN_EXE=$(find templates/crorust.ruxt -type f -path "*/windows/*" -name "*.exe" 2>/dev/null | head -n 1)
+        test -n "$WIN_EXE" && test -f "$WIN_EXE"
+        SIZE=$(stat -c%s "$WIN_EXE" 2>/dev/null || stat -f%z "$WIN_EXE")
+        test "$SIZE" -gt 100000
+        file "$WIN_EXE" | grep -E "(PE32\+|MS Windows)"
+        echo "Windows binary verified successfully at $WIN_EXE ($SIZE bytes)." >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Verify Generated Artifact (Web Distribution)
+      if: inputs.platform == 'web'
+      shell: bash
+      run: |
+        DIST_DIR="templates/crorust.ruxt/.cache/web-static/dist"
+        test -d "$DIST_DIR"
+        test -f "$DIST_DIR/index.html"
+        WASM_FILE=$(find "$DIST_DIR" -maxdepth 2 -type f -name "*.wasm" 2>/dev/null | head -n 1)
+        test -n "$WASM_FILE" && test -f "$WASM_FILE"
+        echo "Web distribution package & WASM binary verified successfully in $DIST_DIR." >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Stage Application Build Artifacts for Upload
+      shell: bash
+      run: |
+        mkdir -p "${{ github.workspace }}/staged_artifacts"
+        PLATFORM="${{ inputs.platform }}"
+        ARCH="${{ inputs.arch }}"
+
+        case "$PLATFORM" in
+          android)
+            find templates/crorust.ruxt -type f -name "*.apk" -exec cp {} "${{ github.workspace }}/staged_artifacts/ruxt-android-${ARCH}.apk" \;
+            ;;
+          web)
+            WEB_DIST="templates/crorust.ruxt/.cache/web-static/dist"
+            if [ -d "$WEB_DIST" ]; then
+              cp -r "$WEB_DIST" "${{ github.workspace }}/staged_artifacts/ruxt-web-${ARCH}"
+            fi
+            ;;
+          windows)
+            find templates/crorust.ruxt -type f -path "*/windows/*" -name "*.exe" -exec cp {} "${{ github.workspace }}/staged_artifacts/ruxt-windows-${ARCH}.exe" \;
+            find templates/crorust.ruxt -type f -path "*/windows/*" -name "*.msix" -exec cp {} "${{ github.workspace }}/staged_artifacts/ruxt-windows-${ARCH}.msix" \; 2>/dev/null || true
+            ;;
+          macos|ios)
+            APP_BUNDLE=$(find templates/crorust.ruxt -type d -path "*/$PLATFORM/*" -name "*.app" 2>/dev/null | head -n 1)
+            if [ -n "$APP_BUNDLE" ]; then
+              cp -rL "$APP_BUNDLE" "${{ github.workspace }}/staged_artifacts/ruxt-${PLATFORM}-${ARCH}.app"
+            fi
+            ;;
+          linux)
+            APPDIR=$(find templates/crorust.ruxt -type d -name "*AppDir" 2>/dev/null | head -n 1)
+            if [ -n "$APPDIR" ]; then
+              cp -rL "$APPDIR" "${{ github.workspace }}/staged_artifacts/ruxt-linux-${ARCH}.AppDir"
+            fi
+            find templates/crorust.ruxt -type f -name "*.AppImage" -exec cp {} "${{ github.workspace }}/staged_artifacts/ruxt-linux-${ARCH}.AppImage" \; 2>/dev/null || true
+            ;;
+        esac
+
+        echo "Staged files for upload:"
+        ls -la "${{ github.workspace }}/staged_artifacts"
+
+    - name: Upload Staged Application Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ruxt-${{ inputs.platform }}-${{ inputs.arch }}-via-${{ inputs.host_slug }}
+        path: ${{ github.workspace }}/staged_artifacts
+        retention-days: 7
+        if-no-files-found: error
