@@ -52,3 +52,11 @@ fn test_r8_catalog_contains_modern_compiler() {
     assert_eq!(r8_artifact.version, "9.5.26");
     assert!(r8_artifact.url.ends_with("r8-9.5.26.jar"));
 }
+
+#[test]
+fn test_desugar_configuration_contains_conversion_classes() {
+    let config = ToolCatalog::get_desugar_jdk_libs_config("2.1.4")
+        .expect("desugar_jdk_libs_configuration 2.1.4 must exist");
+    assert_eq!(config.version, "2.1.4");
+    assert_eq!(config.name, "desugar_jdk_libs_configuration");
+}

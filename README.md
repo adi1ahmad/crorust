@@ -290,6 +290,15 @@ target_sdk = 34
 compile_sdk = 35
 use_gradle = false                   # standalone pipeline (default) | legacy Gradle
 kotlin_version = "2.1.0"
+# Android Activity & GameActivity options:
+# game_activity = true               # auto-detects android-activity from Cargo.lock:
+                                     # - android-activity 0.5/0.6 -> androidx.games:games-activity:2.0.2
+                                     # - android-activity >= 0.7  -> androidx.games:games-activity:3.0.5
+                                     # - unspecified glue         -> androidx.games:games-activity:3.0.5
+# game_activity = "3.0.5"            # or explicitly pin a GameActivity release
+# [android.activity]
+# type = "game"                      # "game" | "native" | "custom"
+# version = "3.0.5"
 dependencies = ["androidx.core:core-ktx:1.10.1"]
 repositories = [{ standard = "google" }, { standard = "mavenCentral" }]
 

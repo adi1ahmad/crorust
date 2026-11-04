@@ -7,6 +7,13 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+#[derive(Debug, Clone)]
+pub struct DesugarTools {
+    pub desugar_json: PathBuf,
+    pub desugar_jar: PathBuf,
+    pub config_classes: Vec<PathBuf>,
+}
+
 pub struct AndroidBytecodeCompiler<'a> {
     env: &'a SessionExecutionContext,
     classes_out_dir: PathBuf,
@@ -252,7 +259,7 @@ impl<'a> AndroidBytecodeCompiler<'a> {
         Ok(())
     }
 
-    fn ensure_desugar_tools(&self) -> Result<(PathBuf, PathBuf)> {
+    fn ensure_desugar_tools(&self) -> Result<DesugarTools> {
         let tool_mgr = crate::download::manager::ToolManager::new(self.env)?;
 
         let config_artifact =
@@ -271,6 +278,19 @@ impl<'a> AndroidBytecodeCompiler<'a> {
             desugar_json.display()
         );
 
+        // Collect all adapter conversion classfiles from the configuration archive (e.g. TimeConversions.class)
+        let mut config_classes = Vec::new();
+        for entry in walkdir::WalkDir::new(&config_dir)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            let path = entry.path();
+            if path.is_file() && path.extension().is_some_and(|ext| ext == "class") {
+                config_classes.push(path.to_path_buf());
+            }
+        }
+        config_classes.sort();
+
         let libs_artifact = crate::download::catalog::ToolCatalog::get_desugar_jdk_libs("2.1.4")
             .context("desugar_jdk_libs 2.1.4 not found in catalog")?;
         let libs_dir = tool_mgr.ensure_tool(&libs_artifact)?;
@@ -282,7 +302,11 @@ impl<'a> AndroidBytecodeCompiler<'a> {
             desugar_jdk_libs_jar.display()
         );
 
-        Ok((desugar_json, desugar_jdk_libs_jar))
+        Ok(DesugarTools {
+            desugar_json,
+            desugar_jar: desugar_jdk_libs_jar,
+            config_classes,
+        })
     }
 
     fn compile_dex(
@@ -344,8 +368,8 @@ impl<'a> AndroidBytecodeCompiler<'a> {
             .arg("warning")
             .arg("none");
 
-        if let Some((ref desugar_json, _)) = desugar_tools {
-            cmd.arg("--desugared-lib").arg(desugar_json);
+        if let Some(ref dt) = desugar_tools {
+            cmd.arg("--desugared-lib").arg(&dt.desugar_json);
         }
 
         for entry in walkdir::WalkDir::new(&self.classes_out_dir)
@@ -364,7 +388,7 @@ impl<'a> AndroidBytecodeCompiler<'a> {
 
         task::run(&mut cmd).context("Failed while compiling DEX bytecode with d8")?;
 
-        if let Some((ref desugar_json, ref desugar_jar)) = desugar_tools {
+        if let Some(ref dt) = desugar_tools {
             let desugar_temp = self.env.target_platform_dir().join("desugar_dex");
             if desugar_temp.exists() {
                 let _ = std::fs::remove_dir_all(&desugar_temp);
@@ -381,9 +405,14 @@ impl<'a> AndroidBytecodeCompiler<'a> {
 
             l8_cmd.arg("--lib").arg(&android_jar);
             l8_cmd.arg("--min-api").arg(&min_sdk);
-            l8_cmd.arg("--desugared-lib").arg(desugar_json);
+            l8_cmd.arg("--desugared-lib").arg(&dt.desugar_json);
             l8_cmd.arg("--output").arg(&desugar_temp);
-            l8_cmd.arg(desugar_jar);
+            l8_cmd.arg(&dt.desugar_jar);
+
+            // Pass all configuration adapter conversion classfiles (e.g. TimeConversions.class)
+            for cls in &dt.config_classes {
+                l8_cmd.arg(cls);
+            }
 
             task::run(&mut l8_cmd)
                 .context("Failed while compiling desugared library bytecode with L8")?;
@@ -853,21 +882,29 @@ impl RClassBytecodeWriter {
 
 pub struct RClassGenerator {
     all_entries: BTreeMap<String, BTreeSet<String>>,
-    styleable_arrays: BTreeMap<String, Vec<u32>>,
-    styleable_indices: BTreeMap<String, BTreeMap<String, u32>>,
     pkg_entries: BTreeMap<String, BTreeMap<String, BTreeSet<String>>>,
-    pkg_styleable_arrays: BTreeMap<String, BTreeSet<String>>,
-    pkg_styleable_indices: BTreeMap<String, BTreeMap<String, u32>>,
+    /// Per-package styleable arrays: PackageName -> (StyleableName -> ArrayOfAttrIds)
+    pub pkg_styleable_arrays: BTreeMap<String, BTreeMap<String, Vec<u32>>>,
+    /// Per-package styleable indices: PackageName -> (StyleableName -> (FieldName -> Index))
+    pub pkg_styleable_indices: BTreeMap<String, BTreeMap<String, BTreeMap<String, u32>>>,
+    /// Root application package styleable arrays (deterministic sorted union)
+    pub root_styleable_arrays: BTreeMap<String, Vec<u32>>,
+    /// Root application package styleable indices
+    pub root_styleable_indices: BTreeMap<String, u32>,
 }
 
 impl RClassGenerator {
     pub fn parse(r_txt_files: &[(String, PathBuf)]) -> Result<Self> {
         let mut all_entries: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
-        let mut styleable_arrays: BTreeMap<String, Vec<u32>> = BTreeMap::new();
-        let mut styleable_indices: BTreeMap<String, BTreeMap<String, u32>> = BTreeMap::new();
         let mut pkg_entries: BTreeMap<String, BTreeMap<String, BTreeSet<String>>> = BTreeMap::new();
-        let mut pkg_styleable_arrays: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
-        let mut pkg_styleable_indices: BTreeMap<String, BTreeMap<String, u32>> = BTreeMap::new();
+        let mut pkg_styleable_arrays: BTreeMap<String, BTreeMap<String, Vec<u32>>> =
+            BTreeMap::new();
+        let mut pkg_styleable_indices: BTreeMap<String, BTreeMap<String, BTreeMap<String, u32>>> =
+            BTreeMap::new();
+
+        // Pass 1: Parse all resource entries and record all declared styleable array names
+        let mut parsed_packages: Vec<(String, Vec<String>, BTreeSet<String>)> = Vec::new();
+        let mut all_known_styleables: BTreeSet<String> = BTreeSet::new();
 
         for (pkg, r_txt_path) in r_txt_files {
             let content = match std::fs::read_to_string(r_txt_path) {
@@ -878,15 +915,22 @@ impl RClassGenerator {
                 }
             };
 
+            let mut pkg_styleables = BTreeSet::new();
+            let mut lines = Vec::new();
+
             for line in content.lines() {
                 let trimmed = line.trim();
                 if trimmed.is_empty() || trimmed.starts_with('#') {
                     continue;
                 }
+                lines.push(trimmed.to_string());
 
                 if let Some(rest) = trimmed.strip_prefix("int[] styleable ") {
                     if let Some((name, vals_str)) = rest.split_once('{') {
                         let name = name.trim();
+                        pkg_styleables.insert(name.to_string());
+                        all_known_styleables.insert(name.to_string());
+
                         let vals_str = vals_str.trim().trim_end_matches('}').trim();
                         let mut values = Vec::new();
                         if !vals_str.is_empty() {
@@ -903,34 +947,14 @@ impl RClassGenerator {
                                 values.push(val);
                             }
                         }
-                        styleable_arrays.entry(name.to_string()).or_insert(values);
                         pkg_styleable_arrays
                             .entry(pkg.clone())
                             .or_default()
-                            .insert(name.to_string());
+                            .insert(name.to_string(), values);
                     }
-                } else if let Some(rest) = trimmed.strip_prefix("int styleable ") {
-                    let mut parts = rest.split_whitespace();
-                    if let (Some(field_name), Some(idx_str)) = (parts.next(), parts.next()) {
-                        let idx = if let Some(hex) = idx_str.strip_prefix("0x") {
-                            u32::from_str_radix(hex, 16).unwrap_or(0)
-                        } else {
-                            idx_str.parse::<u32>().unwrap_or(0)
-                        };
-                        let styleable_base = if let Some((base, _)) = field_name.split_once('_') {
-                            base.to_string()
-                        } else {
-                            field_name.to_string()
-                        };
-                        styleable_indices
-                            .entry(styleable_base)
-                            .or_default()
-                            .insert(field_name.to_string(), idx);
-                        pkg_styleable_indices
-                            .entry(pkg.clone())
-                            .or_default()
-                            .insert(field_name.to_string(), idx);
-                    }
+                } else if trimmed.starts_with("int styleable ") {
+                    // Handled in Pass 2
+                    continue;
                 } else if let Some(rest) = trimmed.strip_prefix("int ") {
                     let mut parts = rest.split_whitespace();
                     if let (Some(res_type), Some(name), Some(_val)) =
@@ -949,15 +973,59 @@ impl RClassGenerator {
                     }
                 }
             }
+
+            parsed_packages.push((pkg.clone(), lines, pkg_styleables));
+        }
+
+        // Pass 2: Parse styleable index constants using longest-prefix matching
+        for (pkg, lines, pkg_styleables) in parsed_packages {
+            for line in lines {
+                if let Some(rest) = line.strip_prefix("int styleable ") {
+                    let mut parts = rest.split_whitespace();
+                    if let (Some(field_name), Some(idx_str)) = (parts.next(), parts.next()) {
+                        let idx = if let Some(hex) = idx_str.strip_prefix("0x") {
+                            u32::from_str_radix(hex, 16).unwrap_or(0)
+                        } else {
+                            idx_str.parse::<u32>().unwrap_or(0)
+                        };
+
+                        // Longest-prefix match against package-specific styleables, then global
+                        let matched_styleable = pkg_styleables
+                            .iter()
+                            .chain(all_known_styleables.iter())
+                            .filter(|s| {
+                                field_name.starts_with(s.as_str())
+                                    && field_name[s.len()..].starts_with('_')
+                            })
+                            .max_by_key(|s| s.len());
+
+                        if let Some(target_styleable) = matched_styleable {
+                            pkg_styleable_indices
+                                .entry(pkg.clone())
+                                .or_default()
+                                .entry(target_styleable.clone())
+                                .or_default()
+                                .insert(field_name.to_string(), idx);
+                        } else if let Some((base, _)) = field_name.rsplit_once('_') {
+                            pkg_styleable_indices
+                                .entry(pkg.clone())
+                                .or_default()
+                                .entry(base.to_string())
+                                .or_default()
+                                .insert(field_name.to_string(), idx);
+                        }
+                    }
+                }
+            }
         }
 
         Ok(Self {
             all_entries,
-            styleable_arrays,
-            styleable_indices,
             pkg_entries,
             pkg_styleable_arrays,
             pkg_styleable_indices,
+            root_styleable_arrays: BTreeMap::new(),
+            root_styleable_indices: BTreeMap::new(),
         })
     }
 
@@ -986,19 +1054,23 @@ impl RClassGenerator {
     }
 
     pub fn resolve_styleables(&mut self, id_map: &BTreeMap<(String, String), u32>) {
-        for (styleable_name, values) in &mut self.styleable_arrays {
-            if let Some(indices) = self.styleable_indices.get(styleable_name) {
-                for (field_name, idx) in indices {
-                    let idx = *idx as usize;
-                    if idx < values.len() && values[idx] == 0 {
-                        if let Some(suffix) =
-                            field_name.strip_prefix(&format!("{}_", styleable_name))
-                        {
-                            if !suffix.starts_with("android_") {
-                                if let Some(attr_id) =
-                                    id_map.get(&("attr".to_string(), suffix.to_string()))
-                                {
-                                    values[idx] = *attr_id;
+        // Step 1: Resolve placeholder 0x0 values in every package's isolated arrays
+        for (pkg, arrays) in &mut self.pkg_styleable_arrays {
+            if let Some(pkg_indices) = self.pkg_styleable_indices.get(pkg) {
+                for (styleable_name, values) in arrays.iter_mut() {
+                    if let Some(indices) = pkg_indices.get(styleable_name) {
+                        let prefix = format!("{}_", styleable_name);
+                        for (field_name, idx) in indices {
+                            let idx = *idx as usize;
+                            if idx < values.len() && values[idx] == 0 {
+                                if let Some(suffix) = field_name.strip_prefix(&prefix) {
+                                    if !suffix.starts_with("android_") {
+                                        if let Some(attr_id) =
+                                            id_map.get(&("attr".to_string(), suffix.to_string()))
+                                        {
+                                            values[idx] = *attr_id;
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1006,6 +1078,68 @@ impl RClassGenerator {
                 }
             }
         }
+
+        // Step 2: Synthesize deterministic root package styleable arrays and indices
+        let mut root_arrays = BTreeMap::new();
+        let mut root_indices = BTreeMap::new();
+
+        let mut all_styleable_names = BTreeSet::new();
+        for arrays in self.pkg_styleable_arrays.values() {
+            for name in arrays.keys() {
+                all_styleable_names.insert(name.clone());
+            }
+        }
+
+        for styleable_name in all_styleable_names {
+            let mut attr_entries: Vec<(String, u32)> = Vec::new();
+
+            for (pkg, arrays) in &self.pkg_styleable_arrays {
+                if let Some(values) = arrays.get(&styleable_name) {
+                    if let Some(pkg_indices) = self.pkg_styleable_indices.get(pkg) {
+                        if let Some(indices) = pkg_indices.get(&styleable_name) {
+                            for (field_name, idx) in indices {
+                                let idx = *idx as usize;
+                                if idx < values.len() {
+                                    let id = values[idx];
+                                    if id != 0 {
+                                        attr_entries.push((field_name.clone(), id));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if attr_entries.is_empty() {
+                let mut longest_vec = Vec::new();
+                for arrays in self.pkg_styleable_arrays.values() {
+                    if let Some(v) = arrays.get(&styleable_name) {
+                        if v.len() > longest_vec.len() {
+                            longest_vec = v.clone();
+                        }
+                    }
+                }
+                root_arrays.insert(styleable_name.clone(), longest_vec);
+                continue;
+            }
+
+            // Deduplicate and sort IDs in strictly ascending numerical order (AAPT2 invariant)
+            let mut unique_ids: Vec<u32> = attr_entries.iter().map(|(_, id)| *id).collect();
+            unique_ids.sort_unstable();
+            unique_ids.dedup();
+
+            for (field_name, id) in attr_entries {
+                if let Some(pos) = unique_ids.iter().position(|&x| x == id) {
+                    root_indices.insert(field_name, pos as u32);
+                }
+            }
+
+            root_arrays.insert(styleable_name, unique_ids);
+        }
+
+        self.root_styleable_arrays = root_arrays;
+        self.root_styleable_indices = root_indices;
     }
 
     pub fn write_sources(&mut self, out_dir: &Path, root_package: &str) -> Result<Vec<PathBuf>> {
@@ -1015,32 +1149,34 @@ impl RClassGenerator {
         let mut java_files = Vec::new();
 
         for (pkg, types) in &self.pkg_entries {
+            let pkg_arrays = self.pkg_styleable_arrays.get(pkg);
+            let mut flattened_indices = BTreeMap::new();
+            if let Some(styleables) = self.pkg_styleable_indices.get(pkg) {
+                for indices in styleables.values() {
+                    for (k, v) in indices {
+                        flattened_indices.insert(k.clone(), *v);
+                    }
+                }
+            }
+
             let file_path = self.write_single_r_java(
                 out_dir,
                 pkg,
                 types,
-                self.pkg_styleable_arrays.get(pkg),
-                self.pkg_styleable_indices.get(pkg),
+                pkg_arrays,
+                Some(&flattened_indices),
                 &id_map,
             )?;
             java_files.push(file_path);
         }
 
         if !self.pkg_entries.contains_key(root_package) {
-            let all_arrays: BTreeSet<String> = self.styleable_arrays.keys().cloned().collect();
-            let mut all_indices = BTreeMap::new();
-            for indices in self.styleable_indices.values() {
-                for (k, v) in indices {
-                    all_indices.insert(k.clone(), *v);
-                }
-            }
-
             let file_path = self.write_single_r_java(
                 out_dir,
                 root_package,
                 &self.all_entries,
-                Some(&all_arrays),
-                Some(&all_indices),
+                Some(&self.root_styleable_arrays),
+                Some(&self.root_styleable_indices),
                 &id_map,
             )?;
             java_files.push(file_path);
@@ -1054,7 +1190,7 @@ impl RClassGenerator {
         out_dir: &Path,
         pkg: &str,
         types: &BTreeMap<String, BTreeSet<String>>,
-        styleable_arrays: Option<&BTreeSet<String>>,
+        styleable_arrays: Option<&BTreeMap<String, Vec<u32>>>,
         styleable_indices: Option<&BTreeMap<String, u32>>,
         id_map: &BTreeMap<(String, String), u32>,
     ) -> Result<PathBuf> {
@@ -1088,18 +1224,16 @@ impl RClassGenerator {
         if has_arrays || has_indices {
             s.push_str("    public static final class styleable {\n");
             if let Some(arrays) = styleable_arrays {
-                for name in arrays {
-                    if let Some(values) = self.styleable_arrays.get(name) {
-                        let vals_joined = values
-                            .iter()
-                            .map(|v| format!("0x{:08x}", v))
-                            .collect::<Vec<_>>()
-                            .join(", ");
-                        s.push_str(&format!(
-                            "        public static int[] {} = {{ {} }};\n",
-                            name, vals_joined
-                        ));
-                    }
+                for (name, values) in arrays {
+                    let vals_joined = values
+                        .iter()
+                        .map(|v| format!("0x{:08x}", v))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    s.push_str(&format!(
+                        "        public static int[] {} = {{ {} }};\n",
+                        name, vals_joined
+                    ));
                 }
             }
             if let Some(indices) = styleable_indices {
@@ -1124,31 +1258,33 @@ impl RClassGenerator {
         self.resolve_styleables(&id_map);
 
         for (pkg, types) in &self.pkg_entries {
-            self.emit_single_package_bytecode(
-                out_classes_dir,
-                pkg,
-                types,
-                self.pkg_styleable_arrays.get(pkg),
-                self.pkg_styleable_indices.get(pkg),
-                &id_map,
-            )?;
-        }
-
-        if !self.pkg_entries.contains_key(root_package) {
-            let all_arrays: BTreeSet<String> = self.styleable_arrays.keys().cloned().collect();
-            let mut all_indices = BTreeMap::new();
-            for indices in self.styleable_indices.values() {
-                for (k, v) in indices {
-                    all_indices.insert(k.clone(), *v);
+            let pkg_arrays = self.pkg_styleable_arrays.get(pkg);
+            let mut flattened_indices = BTreeMap::new();
+            if let Some(styleables) = self.pkg_styleable_indices.get(pkg) {
+                for indices in styleables.values() {
+                    for (k, v) in indices {
+                        flattened_indices.insert(k.clone(), *v);
+                    }
                 }
             }
 
             self.emit_single_package_bytecode(
                 out_classes_dir,
+                pkg,
+                types,
+                pkg_arrays,
+                Some(&flattened_indices),
+                &id_map,
+            )?;
+        }
+
+        if !self.pkg_entries.contains_key(root_package) {
+            self.emit_single_package_bytecode(
+                out_classes_dir,
                 root_package,
                 &self.all_entries,
-                Some(&all_arrays),
-                Some(&all_indices),
+                Some(&self.root_styleable_arrays),
+                Some(&self.root_styleable_indices),
                 &id_map,
             )?;
         }
@@ -1161,7 +1297,7 @@ impl RClassGenerator {
         out_classes_dir: &Path,
         pkg: &str,
         types: &BTreeMap<String, BTreeSet<String>>,
-        styleable_arrays: Option<&BTreeSet<String>>,
+        styleable_arrays: Option<&BTreeMap<String, Vec<u32>>>,
         styleable_indices: Option<&BTreeMap<String, u32>>,
         id_map: &BTreeMap<(String, String), u32>,
     ) -> Result<()> {
@@ -1201,10 +1337,8 @@ impl RClassGenerator {
 
             let mut array_fields = Vec::new();
             if let Some(arrays) = styleable_arrays {
-                for name in arrays {
-                    if let Some(values) = self.styleable_arrays.get(name) {
-                        array_fields.push((name.clone(), values.clone()));
-                    }
+                for (name, values) in arrays {
+                    array_fields.push((name.clone(), values.clone()));
                 }
             }
 
@@ -1249,8 +1383,16 @@ int styleable ActionBar_actionBarSize 1
         );
 
         generator.resolve_styleables(&id_map);
-        let action_bar_values = generator.styleable_arrays.get("ActionBar").unwrap();
+        let action_bar_values = generator.root_styleable_arrays.get("ActionBar").unwrap();
         assert_eq!(action_bar_values[0], 0x10100da);
+
+        let pkg_action_bar = generator
+            .pkg_styleable_arrays
+            .get("androidx.appcompat")
+            .unwrap()
+            .get("ActionBar")
+            .unwrap();
+        assert_eq!(pkg_action_bar[0], 0x10100da);
 
         let attr_id = *id_map
             .get(&("attr".to_string(), "actionBarSize".to_string()))

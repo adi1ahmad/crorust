@@ -316,6 +316,9 @@ impl ManifestConfig {
         if incoming.android.game_activity.is_some() {
             self.android.game_activity = incoming.android.game_activity;
         }
+        if incoming.android.activity.is_some() {
+            self.android.activity = incoming.android.activity;
+        }
         if !incoming.android.assets.is_empty() {
             self.android.assets = incoming.android.assets;
         }
@@ -578,6 +581,8 @@ impl ManifestConfig {
         manifest_package: &CargoPackageSection,
         workspace_manifest: Option<&CargoPackageManifest>,
         opt: TargetOpt,
+        project_root: &Path,
+        workspace_root: Option<&Path>,
     ) -> Result<()> {
         let is_game = self.android.game_activity();
 
@@ -585,12 +590,36 @@ impl ManifestConfig {
             self.android.gradle = Some(GradleConfig::default());
         }
         if is_game {
-            let game_act = "androidx.games:games-activity:3.0.5".to_string();
-            if !self.android.dependencies.contains(&game_act) {
+            let has_games_activity = self
+                .android
+                .dependencies
+                .iter()
+                .any(|d| d.starts_with("androidx.games:games-activity"));
+
+            if !has_games_activity {
+                let target_ver = if let Some(v) = self.android.explicit_game_activity_version() {
+                    v.to_string()
+                } else {
+                    let detected = crate::android::detect_android_activity_version(
+                        project_root,
+                        workspace_root,
+                    );
+                    crate::android::resolve_recommended_games_activity_version(detected.as_deref())
+                        .to_string()
+                };
+
+                let game_act = format!("androidx.games:games-activity:{}", target_ver);
                 self.android.dependencies.push(game_act);
             }
-            let appcompat = "androidx.appcompat:appcompat:1.7.0".to_string();
-            if !self.android.dependencies.contains(&appcompat) {
+
+            let has_appcompat = self
+                .android
+                .dependencies
+                .iter()
+                .any(|d| d.starts_with("androidx.appcompat:appcompat"));
+
+            if !has_appcompat {
+                let appcompat = "androidx.appcompat:appcompat:1.7.0".to_string();
                 self.android.dependencies.push(appcompat);
             }
         }
@@ -1036,7 +1065,11 @@ pub struct AndroidPlatformConfig {
     #[serde(default)]
     pub dependencies: Vec<String>,
 
-    pub game_activity: Option<bool>,
+    #[serde(default)]
+    pub game_activity: Option<AndroidGameActivityConfig>,
+
+    #[serde(default)]
+    pub activity: Option<AndroidActivityConfig>,
 
     #[serde(default)]
     pub assets: Vec<PackagingAssetMapping>,
@@ -1076,8 +1109,70 @@ impl AndroidPlatformConfig {
     }
 
     pub fn game_activity(&self) -> bool {
-        self.game_activity.unwrap_or(false)
+        if let Some(act) = &self.activity {
+            if let Some(t) = &act.activity_type {
+                return t.eq_ignore_ascii_case("game") || t.eq_ignore_ascii_case("gameactivity");
+            }
+        }
+        if let Some(ga) = &self.game_activity {
+            return ga.is_enabled();
+        }
+        false
     }
+
+    pub fn explicit_game_activity_version(&self) -> Option<&str> {
+        if let Some(act) = &self.activity {
+            if let Some(v) = &act.version {
+                return Some(v.as_str());
+            }
+        }
+        self.game_activity
+            .as_ref()
+            .and_then(|g| g.explicit_version())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(untagged)]
+pub enum AndroidGameActivityConfig {
+    Boolean(bool),
+    Version(String),
+    Detailed {
+        #[serde(default = "default_game_activity_enabled")]
+        enabled: bool,
+        version: Option<String>,
+    },
+}
+
+fn default_game_activity_enabled() -> bool {
+    true
+}
+
+impl AndroidGameActivityConfig {
+    pub fn is_enabled(&self) -> bool {
+        match self {
+            Self::Boolean(b) => *b,
+            Self::Version(_) => true,
+            Self::Detailed { enabled, .. } => *enabled,
+        }
+    }
+
+    pub fn explicit_version(&self) -> Option<&str> {
+        match self {
+            Self::Boolean(_) => None,
+            Self::Version(v) => Some(v.as_str()),
+            Self::Detailed { version, .. } => version.as_deref(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AndroidActivityConfig {
+    #[serde(rename = "type")]
+    pub activity_type: Option<String>,
+    pub version: Option<String>,
+    pub name: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]

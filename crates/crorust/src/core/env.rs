@@ -105,7 +105,13 @@ impl SessionExecutionContext {
         let build_dir = cargo.target_directory().join("crorust");
 
         let opt = args.build_target.opt_for_mode(mode);
-        config.harmonize_with_cargo_package(package, cargo.workspace_manifest_data(), opt)?;
+        config.harmonize_with_cargo_package(
+            package,
+            cargo.workspace_manifest_data(),
+            opt,
+            cargo.package_root_path(),
+            cargo.workspace_root_path(),
+        )?;
         let build_target = args.build_target.build_target_with_mode(&config, mode)?;
         let icon = config
             .app_icon(build_target.target_platform())

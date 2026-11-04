@@ -85,6 +85,16 @@ impl<'a> AndroidMvnResolver<'a> {
                 dep.version = Some(format!("[{target_kotlin_version}]"));
             }
 
+            // Ensure games-activity is pinned to the exact version requested (unless a custom range was provided),
+            // because games-activity has a strict binary JNI ABI contract with native C headers in android-activity.
+            if dep.group.as_ref() == "androidx.games" && dep.name.as_ref() == "games-activity" {
+                if let Some(ref v) = dep.version {
+                    if !v.starts_with('[') && !v.starts_with('(') {
+                        dep.version = Some(format!("[{v}]"));
+                    }
+                }
+            }
+
             root_deps.push(dep);
         }
 

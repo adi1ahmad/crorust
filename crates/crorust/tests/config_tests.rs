@@ -234,6 +234,7 @@ fn test_template_manifest_parses_successfully() {
     assert_eq!(config.android().target_sdk, Some(34));
     assert_eq!(config.android().compile_sdk, Some(35));
     assert!(!config.android().use_gradle());
+    assert!(config.android().game_activity());
     assert_eq!(config.linux().libc, Some(LinuxLibcVariant::Gnu));
     assert_eq!(
         config.macos().bundle_identifier.as_deref(),
