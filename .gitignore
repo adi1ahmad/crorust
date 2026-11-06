@@ -23,3 +23,7 @@ plans/
 
 # CI/local install output (cargo install --root . / Tier 2 staging)
 /bin/
+
+# Python cache & bytecode
+__pycache__/
+*.py[cod]

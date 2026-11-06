@@ -716,26 +716,70 @@ impl<'a> SdkToolchainFetcher<'a> {
             );
         }
 
-        println!("==> Resolving macOS SDK package from Apple Public Software Update CDN...");
-        let package_url = apple_catalog::AppleCdnResolver::resolve_clt_sdk_package_url()?;
-        let pkg_filename = package_url
+        println!("==> Resolving macOS SDK package from Apple CDN...");
+        let (package_url, expected_sha256) = {
+            let url = apple_catalog::AppleCdnResolver::resolve_clt_sdk_package_url()
+                .unwrap_or_else(|_| apple_catalog::VERIFIED_FALLBACK_APPLE_SDK_URL.to_string());
+            let sha = if url == apple_catalog::VERIFIED_FALLBACK_APPLE_SDK_URL {
+                Some(apple_catalog::VERIFIED_FALLBACK_APPLE_SDK_SHA256)
+            } else {
+                None
+            };
+            (url, sha)
+        };
+
+        let raw_filename = package_url
             .rsplit_once('/')
             .map(|(_, f)| f)
-            .unwrap_or("CLTools_macOS_SDK.pkg");
+            .unwrap_or("CLTools_macOSNMOS_SDK.pkg");
+        let pkg_filename = raw_filename.split('?').next().unwrap_or(raw_filename);
         let download_dir = self.env.cache_directory().join("download");
         std::fs::create_dir_all(&download_dir)?;
         let pkg_path = download_dir.join(pkg_filename);
 
+        // Anti-poisoning check: if file exists on disk but is suspiciously small (< 20MB), remove it
+        if pkg_path.exists() {
+            if let Ok(meta) = pkg_path.metadata() {
+                if meta.len() < apple_catalog::MINIMUM_MACOS_SDK_PKG_SIZE_BYTES {
+                    tracing::warn!(
+                        "Removing truncated or stub package from cache: {} ({} bytes)",
+                        pkg_path.display(),
+                        meta.len()
+                    );
+                    let _ = std::fs::remove_file(&pkg_path);
+                }
+            }
+        }
+
         if !pkg_path.exists() {
             println!("==> Downloading official Apple Command Line Tools package from Apple CDN...");
-            let verifier = VerifiableDownload::new(&package_url, None);
+            let verifier = VerifiableDownload::new(&package_url, expected_sha256);
             let client = create_hardened_http_client()?;
             verifier.download(&client, &pkg_path)?;
+
+            // Post-download validation: enforce minimum file size
+            let downloaded_len = pkg_path.metadata()?.len();
+            if downloaded_len < apple_catalog::MINIMUM_MACOS_SDK_PKG_SIZE_BYTES {
+                let _ = std::fs::remove_file(&pkg_path);
+                anyhow::bail!(
+                    "Downloaded macOS SDK package is invalid or truncated: {} bytes (expected >= {} bytes)",
+                    downloaded_len,
+                    apple_catalog::MINIMUM_MACOS_SDK_PKG_SIZE_BYTES
+                );
+            }
         }
 
         println!("==> Extracting macOS SDK into `{}`...", output.display());
-        apple_pkg::ApplePkgExtractor::extract_pkg(&pkg_path, &output)?;
-        std::fs::write(output.join(".complete"), b"ok\n")?;
+        let lock_dir = self.env.cache_directory().join("locks");
+        extract_atomic(
+            &pkg_path,
+            &output,
+            &lock_dir,
+            "macos-sdk",
+            |archive_path, staging_dest| {
+                apple_pkg::ApplePkgExtractor::extract_pkg(archive_path, staging_dest)
+            },
+        )?;
 
         println!("==> macOS SDK ready at `{}`", output.display());
         Ok(())

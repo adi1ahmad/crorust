@@ -517,6 +517,11 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-features --no-fail-fast
 ```
+You can also run the full local CI dogfood matrix using:
+```sh
+./scripts/local_ci_dogfood_test.sh --doctor
+./scripts/local_ci_dogfood_test.sh --all
+```
 Config changes must also update `templates/crorust.ruxt/manifest.toml`.
 
 ---

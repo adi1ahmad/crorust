@@ -481,3 +481,128 @@ fn test_cpio_self_referential_directory_symlink_does_not_overflow_stack() {
         .join("System/Library/Frameworks/Ruby.framework/Versions/2.6/Headers/ruby/ruby.h");
     assert!(header.is_file());
 }
+
+#[test]
+fn test_find_named_sdk_directory_prefers_exact_match() {
+    let dir = tempdir().unwrap();
+    let root = dir.path();
+
+    // Create MacOSX14.5.sdk
+    let v_sdk = root.join("MacOSX14.5.sdk");
+    fs::create_dir_all(v_sdk.join("usr/lib")).unwrap();
+
+    // Create MacOSX.sdk
+    let exact_sdk = root.join("MacOSX.sdk");
+    fs::create_dir_all(exact_sdk.join("usr/lib")).unwrap();
+
+    let found =
+        crorust::download::apple_pkg::ApplePkgExtractor::find_named_sdk_directory(root, "MacOSX")
+            .expect("Must find SDK directory");
+
+    assert_eq!(found, exact_sdk, "Exact MacOSX.sdk match must be preferred");
+}
+
+#[test]
+fn test_find_named_sdk_directory_resolves_versioned_sdk() {
+    let dir = tempdir().unwrap();
+    let root = dir.path();
+
+    let v_sdk = root.join("MacOSX15.5.sdk");
+    fs::create_dir_all(v_sdk.join("usr/lib")).unwrap();
+
+    let found =
+        crorust::download::apple_pkg::ApplePkgExtractor::find_named_sdk_directory(root, "MacOSX")
+            .expect("Must find versioned SDK directory");
+
+    assert_eq!(found, v_sdk);
+}
+
+#[test]
+fn test_extract_sdk_version_parses_semantic_tuples() {
+    use crorust::download::apple_pkg::ApplePkgExtractor;
+
+    assert_eq!(
+        ApplePkgExtractor::extract_sdk_version("MacOSX15.5.sdk", "MacOSX"),
+        Some((15, 5))
+    );
+    assert_eq!(
+        ApplePkgExtractor::extract_sdk_version("MacOSX14.0.sdk", "MacOSX"),
+        Some((14, 0))
+    );
+    assert_eq!(
+        ApplePkgExtractor::extract_sdk_version("MacOSX14.sdk", "MacOSX"),
+        Some((14, 0))
+    );
+    assert_eq!(
+        ApplePkgExtractor::extract_sdk_version("MacOSX9.0.sdk", "MacOSX"),
+        Some((9, 0))
+    );
+    assert_eq!(
+        ApplePkgExtractor::extract_sdk_version("NotAnSdk", "MacOSX"),
+        None
+    );
+}
+
+#[test]
+fn test_find_named_sdk_directory_orders_versioned_sdks_semantically() {
+    let dir = tempdir().unwrap();
+    let root = dir.path();
+
+    // Create MacOSX9.0.sdk, MacOSX14.5.sdk, MacOSX15.5.sdk
+    let sdk9 = root.join("MacOSX9.0.sdk");
+    fs::create_dir_all(sdk9.join("usr/lib")).unwrap();
+
+    let sdk14 = root.join("MacOSX14.5.sdk");
+    fs::create_dir_all(sdk14.join("usr/lib")).unwrap();
+
+    let sdk15 = root.join("MacOSX15.5.sdk");
+    fs::create_dir_all(sdk15.join("usr/lib")).unwrap();
+
+    let found =
+        crorust::download::apple_pkg::ApplePkgExtractor::find_named_sdk_directory(root, "MacOSX")
+            .expect("Must find versioned SDK directory");
+
+    assert_eq!(found, sdk15, "15.5 must be selected over 14.5 and 9.0");
+}
+
+#[cfg(unix)]
+#[test]
+fn test_extract_sdk_canonicalizes_symlinked_source_properly() {
+    let dir = tempdir().unwrap();
+    let staging = dir.path().join("staging");
+    let dest = dir.path().join("dest");
+
+    // Construct realistic Apple package directory tree
+    let sdks_dir = staging.join("Library/Developer/CommandLineTools/SDKs");
+    let real_sdk = sdks_dir.join("MacOSX15.5.sdk");
+    fs::create_dir_all(real_sdk.join("usr/lib")).unwrap();
+    fs::create_dir_all(real_sdk.join("System/Library/Frameworks")).unwrap();
+    fs::write(real_sdk.join("SDKSettings.plist"), b"<plist></plist>").unwrap();
+    fs::write(real_sdk.join("usr/lib/libSystem.tbd"), b"archs: [arm64]\n").unwrap();
+
+    // Create relative symlink MacOSX.sdk -> MacOSX15.5.sdk as found in Apple CLT packages
+    let symlink_sdk = sdks_dir.join("MacOSX.sdk");
+    std::os::unix::fs::symlink("MacOSX15.5.sdk", &symlink_sdk).unwrap();
+
+    // Run find_named_sdk_directory: should find MacOSX.sdk
+    let found = crorust::download::apple_pkg::ApplePkgExtractor::find_named_sdk_directory(
+        &staging, "MacOSX",
+    )
+    .expect("Must find SDK directory");
+
+    assert_eq!(found, symlink_sdk);
+    assert!(found.is_symlink());
+
+    // Canonicalize found SDK source
+    let canonical = dunce::canonicalize(&found).expect("Canonicalization must succeed");
+    assert_eq!(canonical, dunce::canonicalize(&real_sdk).unwrap());
+
+    // Move canonical directory to dest and clean up staging
+    fs::rename(&canonical, &dest).unwrap();
+    fs::remove_dir_all(&staging).unwrap();
+
+    // Verify destination contains genuine files and is not broken
+    assert!(dest.join("usr/lib/libSystem.tbd").is_file());
+    assert!(dest.join("SDKSettings.plist").is_file());
+    assert!(!dest.is_symlink());
+}

@@ -26,8 +26,34 @@ impl ApplePkgExtractor {
         }
 
         // Locate MacOSX.sdk or MacOSX*.sdk inside staging
-        let sdk_source = Self::find_sdk_directory(&staging)
+        let raw_sdk_source = Self::find_sdk_directory(&staging)
             .context("Failed to locate MacOSX.sdk inside extracted Apple package")?;
+
+        let canonical_staging = dunce::canonicalize(&staging).unwrap_or_else(|_| staging.clone());
+
+        // Critical: If raw_sdk_source is a symbolic link (e.g. MacOSX.sdk -> MacOSX14.5.sdk),
+        // resolve it to the canonical backing directory. Calling fs::rename on a symlink moves
+        // only the symlink pointer, leaving the target directory inside staging to be destroyed by remove_dir_all!
+        let sdk_source = if raw_sdk_source.is_symlink() {
+            let canon = dunce::canonicalize(&raw_sdk_source).with_context(|| {
+                format!(
+                    "Failed to resolve SDK symbolic link target for `{}`",
+                    raw_sdk_source.display()
+                )
+            })?;
+
+            // Security guard: ensure symlink target does not escape staging root
+            if !canon.starts_with(&canonical_staging) {
+                bail!(
+                    "Malicious or invalid SDK symlink target outside staging: `{}` -> `{}`",
+                    raw_sdk_source.display(),
+                    canon.display()
+                );
+            }
+            canon
+        } else {
+            raw_sdk_source
+        };
 
         if destination.exists() {
             let _ = std::fs::remove_dir_all(destination);
@@ -47,6 +73,20 @@ impl ApplePkgExtractor {
             })?;
 
         let _ = std::fs::remove_dir_all(&staging);
+
+        // Validate sysroot contains minimal required linking files
+        let has_linking_stubs = destination.join("usr/lib").exists()
+            || destination.join("System/Library/Frameworks").exists()
+            || destination.join("SDKSettings.plist").exists()
+            || destination.join("SDKSettings.json").exists();
+        if !has_linking_stubs {
+            let _ = std::fs::remove_dir_all(destination);
+            bail!(
+                "Extracted macOS SDK at `{}` is incomplete: missing required framework or library structures",
+                destination.display()
+            );
+        }
+
         Ok(())
     }
 
@@ -253,14 +293,33 @@ impl ApplePkgExtractor {
 
     pub fn find_named_sdk_directory(root: &Path, sdk_prefix: &str) -> Option<PathBuf> {
         let exact_name = format!("{sdk_prefix}.sdk");
+        let mut exact_match: Option<PathBuf> = None;
+        let mut versioned_matches: Vec<PathBuf> = Vec::new();
+
         for entry in walkdir::WalkDir::new(root)
             .into_iter()
             .filter_map(|e| e.ok())
         {
-            if entry.file_type().is_dir() {
-                let name = entry.file_name().to_string_lossy();
-                let name_matches =
-                    name == exact_name || (name.starts_with(sdk_prefix) && name.ends_with(".sdk"));
+            let name = entry.file_name().to_string_lossy();
+
+            // Fast filter: 99.99% of files in an SDK do not end with ".sdk".
+            // Checking name first avoids running stat() syscalls on 50,000+ files!
+            if !name.ends_with(".sdk") {
+                continue;
+            }
+
+            let is_exact = name == exact_name;
+            let is_versioned = name.starts_with(sdk_prefix);
+
+            if !is_exact && !is_versioned {
+                continue;
+            }
+
+            // Inspect file type: true if direct directory, or if symlink pointing to directory
+            let is_dir = entry.file_type().is_dir()
+                || (entry.file_type().is_symlink() && entry.path().is_dir());
+
+            if is_dir {
                 let sdk_structures_exist = entry
                     .path()
                     .join("System")
@@ -270,12 +329,50 @@ impl ApplePkgExtractor {
                     || entry.path().join("usr").join("lib").exists()
                     || entry.path().join("SDKSettings.plist").exists()
                     || entry.path().join("SDKSettings.json").exists();
-                if name_matches && sdk_structures_exist {
-                    return Some(entry.path().to_path_buf());
+
+                if sdk_structures_exist {
+                    if is_exact {
+                        exact_match = Some(entry.path().to_path_buf());
+                        break;
+                    } else {
+                        versioned_matches.push(entry.path().to_path_buf());
+                    }
                 }
             }
         }
-        None
+
+        // Return exact match first (MacOSX.sdk), otherwise latest versioned match (e.g. MacOSX15.5.sdk)
+        if let Some(exact) = exact_match {
+            return Some(exact);
+        }
+
+        // Sort versioned matches by semantic version descending (e.g. MacOSX15.5 > MacOSX14.5),
+        // falling back to path string descending for 100% deterministic tie-breaking.
+        versioned_matches.sort_by(|a, b| {
+            let ver_a = Self::extract_sdk_version(
+                &a.file_name().unwrap_or_default().to_string_lossy(),
+                sdk_prefix,
+            );
+            let ver_b = Self::extract_sdk_version(
+                &b.file_name().unwrap_or_default().to_string_lossy(),
+                sdk_prefix,
+            );
+            ver_b.cmp(&ver_a).then_with(|| b.cmp(a))
+        });
+
+        versioned_matches.into_iter().next()
+    }
+
+    /// Extracts numeric `(major, minor)` from SDK folder names like `MacOSX15.5.sdk` or `MacOSX14.sdk`.
+    pub fn extract_sdk_version(dirname: &str, prefix: &str) -> Option<(u32, u32)> {
+        let rest = dirname.strip_prefix(prefix)?.strip_suffix(".sdk")?;
+        let mut parts = rest.split('.');
+        let major = parts.next()?.parse::<u32>().ok()?;
+        let minor = parts
+            .next()
+            .and_then(|m| m.parse::<u32>().ok())
+            .unwrap_or(0);
+        Some((major, minor))
     }
 
     /// Imports Apple SDKs from an Xcode installation directory (.app) or archive (.xip / .pkg)

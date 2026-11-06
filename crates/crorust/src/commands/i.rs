@@ -1067,40 +1067,67 @@ fn provision_managed_tools(
             } else {
                 print!("  [i --fix] Provisioning macOS SDK (v14.0)... ");
                 let _ = std::io::stdout().flush();
-                match crate::download::apple_catalog::AppleCdnResolver::resolve_clt_sdk_package_url(
-                ) {
-                    Ok(package_url) => {
-                        let download_dir = cache_root.join("download");
-                        let _ = std::fs::create_dir_all(&download_dir);
-                        let pkg_filename = package_url
-                            .rsplit_once('/')
-                            .map(|(_, f)| f)
-                            .unwrap_or("CLTools_macOS_SDK.pkg");
-                        let pkg_path = download_dir.join(pkg_filename);
-                        let res = (|| -> Result<()> {
-                            let client = crate::download::create_hardened_http_client()?;
-                            if !pkg_path.exists() {
-                                let verifier =
-                                    crate::download::VerifiableDownload::new(&package_url, None);
-                                verifier.download(&client, &pkg_path)?;
-                            }
-                            crate::download::apple_pkg::ApplePkgExtractor::extract_pkg(
-                                &pkg_path, &dest_dir,
-                            )?;
-                            std::fs::write(dest_dir.join(".complete"), b"ok\n")?;
-                            Ok(())
-                        })();
+                let (package_url, expected_sha256) = {
+                    let url = crate::download::apple_catalog::AppleCdnResolver::resolve_clt_sdk_package_url()
+                        .unwrap_or_else(|_| crate::download::apple_catalog::VERIFIED_FALLBACK_APPLE_SDK_URL.to_string());
+                    let sha =
+                        if url == crate::download::apple_catalog::VERIFIED_FALLBACK_APPLE_SDK_URL {
+                            Some(crate::download::apple_catalog::VERIFIED_FALLBACK_APPLE_SDK_SHA256)
+                        } else {
+                            None
+                        };
+                    (url, sha)
+                };
 
-                        match res {
-                            Ok(()) => {
-                                println!("\x1b[32m✓ ready at {}\x1b[0m", dest_dir.display());
-                                report.succeeded.push((sdk_title.to_string(), dest_dir));
-                            }
-                            Err(e) => {
-                                println!("\x1b[31m✗ failed ({})\x1b[0m", e);
-                                report.failed.push((sdk_title.to_string(), e.to_string()));
-                            }
+                let download_dir = cache_root.join("download");
+                let _ = std::fs::create_dir_all(&download_dir);
+                let raw_filename = package_url
+                    .rsplit_once('/')
+                    .map(|(_, f)| f)
+                    .unwrap_or("CLTools_macOSNMOS_SDK.pkg");
+                let pkg_filename = raw_filename.split('?').next().unwrap_or(raw_filename);
+                let pkg_path = download_dir.join(pkg_filename);
+
+                // Anti-poisoning check: remove stub or corrupted file if < 20MB
+                if pkg_path.exists() {
+                    if let Ok(meta) = pkg_path.metadata() {
+                        if meta.len()
+                            < crate::download::apple_catalog::MINIMUM_MACOS_SDK_PKG_SIZE_BYTES
+                        {
+                            let _ = std::fs::remove_file(&pkg_path);
                         }
+                    }
+                }
+
+                let res = (|| -> Result<()> {
+                    let client = crate::download::create_hardened_http_client()?;
+                    if !pkg_path.exists() {
+                        let verifier =
+                            crate::download::VerifiableDownload::new(&package_url, expected_sha256);
+                        verifier.download(&client, &pkg_path)?;
+
+                        let downloaded_len = pkg_path.metadata()?.len();
+                        if downloaded_len
+                            < crate::download::apple_catalog::MINIMUM_MACOS_SDK_PKG_SIZE_BYTES
+                        {
+                            let _ = std::fs::remove_file(&pkg_path);
+                            anyhow::bail!(
+                                "Downloaded macOS SDK package is invalid or truncated: {} bytes",
+                                downloaded_len
+                            );
+                        }
+                    }
+                    crate::download::apple_pkg::ApplePkgExtractor::extract_pkg(
+                        &pkg_path, &dest_dir,
+                    )?;
+                    std::fs::write(dest_dir.join(".complete"), b"ok\n")?;
+                    Ok(())
+                })();
+
+                match res {
+                    Ok(()) => {
+                        println!("\x1b[32m✓ ready at {}\x1b[0m", dest_dir.display());
+                        report.succeeded.push((sdk_title.to_string(), dest_dir));
                     }
                     Err(e) => {
                         println!("\x1b[31m✗ failed ({})\x1b[0m", e);
