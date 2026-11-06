@@ -80,8 +80,8 @@ jobs:
         run: cargo test --workspace --all-features --locked --no-fail-fast
 
   tier1-tests-macos:
-    name: "Tier 1: Tests (macos-14)"
-    runs-on: macos-14
+    name: "Tier 1: Tests (macos-15)"
+    runs-on: macos-15
     timeout-minutes: 25
     steps:
       - name: Checkout repository
@@ -98,7 +98,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: ". -> .cache/target"
-          shared-key: "crorust-workspace-dev-v2-macos-14"
+          shared-key: "crorust-workspace-dev-v2-macos-15"
           cache-on-failure: false
           save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
 
@@ -227,9 +227,9 @@ jobs:
           if-no-files-found: error
 
   tier2-build-cli-macos:
-    name: "Tier 2: Build CLI (macos-14)"
+    name: "Tier 2: Build CLI (macos-15)"
     needs: [tier1-tests-macos]
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 20
     steps:
       - name: Checkout repository
@@ -244,7 +244,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: ". -> .cache/target"
-          shared-key: "crorust-workspace-release-v2-macos-14"
+          shared-key: "crorust-workspace-release-v2-macos-15"
           cache-on-failure: false
           save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
 
@@ -602,37 +602,37 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - host-os: macos-14
+          - host-os: macos-15
             host-slug: macos-arm64
             cli-artifact: crorust-macos-arm64
             target-platform: macos
             target-arch: arm64
             rust-target: aarch64-apple-darwin
-          - host-os: macos-14
+          - host-os: macos-15
             host-slug: macos-arm64
             cli-artifact: crorust-macos-arm64
             target-platform: ios
             target-arch: arm64
             rust-target: aarch64-apple-ios
-          - host-os: macos-14
+          - host-os: macos-15
             host-slug: macos-arm64
             cli-artifact: crorust-macos-arm64
             target-platform: android
             target-arch: arm64
             rust-target: aarch64-linux-android
-          - host-os: macos-14
+          - host-os: macos-15
             host-slug: macos-arm64
             cli-artifact: crorust-macos-arm64
             target-platform: web
             target-arch: x64
             rust-target: wasm32-unknown-unknown
-          - host-os: macos-14
+          - host-os: macos-15
             host-slug: macos-arm64
             cli-artifact: crorust-macos-arm64
             target-platform: linux
             target-arch: x64
             rust-target: x86_64-unknown-linux-gnu
-          - host-os: macos-14
+          - host-os: macos-15
             host-slug: macos-arm64
             cli-artifact: crorust-macos-arm64
             target-platform: windows

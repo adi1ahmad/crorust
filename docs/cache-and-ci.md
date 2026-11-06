@@ -54,7 +54,7 @@ flowchart TB
 
     subgraph Hosts["Development Host Runners (3)"]
         H_Lin["🐧 Linux Runner<br/><code>ubuntu-latest</code>"]
-        H_Mac["🍎 macOS Runner<br/><code>macos-14 (arm64)</code>"]
+        H_Mac["🍎 macOS Runner<br/><code>macos-15 (arm64)</code>"]
         H_Win["🪟 Windows Runner<br/><code>windows-latest</code>"]
     end
 
@@ -90,7 +90,7 @@ flowchart TB
 | | `web` | `x64` | `ruxt-web-dist/` | index.html + wasm presence |
 | | `macos` | `arm64` | `ruxt-macos-arm64.app` | Mach-O + Info.plist |
 | | `ios` | `arm64` | `ruxt-ios-arm64.app` | Mach-O + Info.plist |
-| **macOS** (`macos-14`) | `macos` | `arm64` | `ruxt-macos-arm64.app` | AppDir/ELF + native launch (Linux host) |
+| **macOS** (`macos-15`) | `macos` | `arm64` | `ruxt-macos-arm64.app` | AppDir/ELF + native launch (Linux host) |
 | | `ios` | `arm64` | `ruxt-ios-arm64.app` | Mach-O + Info.plist |
 | | `android` | `arm64` | `ruxt-android-arm64.apk` | APK structure (dex/AXML/resources) |
 | | `web` | `arm64` | `ruxt-web-dist/` | index.html + wasm presence |
