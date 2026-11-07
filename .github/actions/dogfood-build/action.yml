@@ -103,6 +103,14 @@ runs:
       if: runner.os == 'macOS' && (inputs.platform == 'linux' || inputs.platform == 'windows')
       shell: bash
       run: |
+        add_to_path() {
+          local dir="$1"
+          if [ -n "$dir" ] && [ -d "$dir" ]; then
+            echo "$dir" >> "$GITHUB_PATH"
+            export PATH="$dir:$PATH"
+          fi
+        }
+
         LLVM_PREFIX=""
         for ver in llvm@18 llvm@17 llvm@16 llvm@15; do
           CANDIDATE="$(brew --prefix "$ver" 2>/dev/null || true)"
@@ -113,17 +121,23 @@ runs:
           fi
         done
 
-        if [ -z "$LLVM_PREFIX" ]; then
+        if [ -n "$LLVM_PREFIX" ]; then
+          add_to_path "$LLVM_PREFIX/bin"
+        else
           echo "No pre-installed LLVM suite found; installing llvm and lld via Homebrew..."
           HOMEBREW_NO_AUTO_UPDATE=1 brew install llvm lld
-          LLVM_PREFIX="$(brew --prefix llvm)"
+          add_to_path "$(brew --prefix llvm)/bin"
           LLD_PREFIX="$(brew --prefix lld 2>/dev/null || true)"
-          if [ -n "$LLD_PREFIX" ] && [ -d "$LLD_PREFIX/bin" ]; then
-            echo "$LLD_PREFIX/bin" >> "$GITHUB_PATH"
+          if [ -n "$LLD_PREFIX" ]; then
+            add_to_path "$LLD_PREFIX/bin"
           fi
         fi
 
-        echo "$LLVM_PREFIX/bin" >> "$GITHUB_PATH"
+        echo "Active tool paths:"
+        which clang
+        which ld.lld
+        which lld-link
+
         clang --version
         ld.lld --version
         lld-link --version
