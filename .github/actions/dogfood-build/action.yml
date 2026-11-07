@@ -103,16 +103,30 @@ runs:
       if: runner.os == 'macOS' && (inputs.platform == 'linux' || inputs.platform == 'windows')
       shell: bash
       run: |
-        LLVM15="$(brew --prefix llvm@15 2>/dev/null || true)"
-        if [ -n "$LLVM15" ] && [ -x "$LLVM15/bin/ld64.lld" ] && [ -x "$LLVM15/bin/lld-link" ]; then
-          LLVM_PREFIX="$LLVM15"
-        else
-          HOMEBREW_NO_AUTO_UPDATE=1 brew install llvm
+        LLVM_PREFIX=""
+        for ver in llvm@18 llvm@17 llvm@16 llvm@15; do
+          CANDIDATE="$(brew --prefix "$ver" 2>/dev/null || true)"
+          if [ -n "$CANDIDATE" ] && [ -x "$CANDIDATE/bin/clang" ] && [ -x "$CANDIDATE/bin/ld.lld" ] && [ -x "$CANDIDATE/bin/lld-link" ]; then
+            echo "Found pre-installed LLVM at $CANDIDATE ($ver)"
+            LLVM_PREFIX="$CANDIDATE"
+            break
+          fi
+        done
+
+        if [ -z "$LLVM_PREFIX" ]; then
+          echo "No pre-installed LLVM suite found; installing llvm and lld via Homebrew..."
+          HOMEBREW_NO_AUTO_UPDATE=1 brew install llvm lld
           LLVM_PREFIX="$(brew --prefix llvm)"
+          LLD_PREFIX="$(brew --prefix lld 2>/dev/null || true)"
+          if [ -n "$LLD_PREFIX" ] && [ -d "$LLD_PREFIX/bin" ]; then
+            echo "$LLD_PREFIX/bin" >> "$GITHUB_PATH"
+          fi
         fi
+
         echo "$LLVM_PREFIX/bin" >> "$GITHUB_PATH"
-        "$LLVM_PREFIX/bin/clang" --version
-        "$LLVM_PREFIX/bin/ld.lld" --version
+        clang --version
+        ld.lld --version
+        lld-link --version
 
     - name: Install Host Dependencies (Windows)
       if: runner.os == 'Windows'

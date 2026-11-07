@@ -77,7 +77,11 @@ pub static CLANG_CL: ToolSpec = ToolSpec {
 pub fn well_known_llvm_dirs() -> Vec<PathBuf> {
     [
         "/opt/homebrew/opt/llvm/bin",
+        "/opt/homebrew/opt/llvm@18/bin",
+        "/opt/homebrew/opt/lld/bin",
         "/usr/local/opt/llvm/bin",
+        "/usr/local/opt/llvm@18/bin",
+        "/usr/local/opt/lld/bin",
         "/usr/lib/llvm-19/bin",
         "/usr/lib/llvm-18/bin",
         "/usr/lib/llvm-17/bin",
@@ -159,7 +163,7 @@ pub fn resolve_with(
 
     bail!(
         "`{}` was not found. Install LLVM (apt: `sudo apt install llvm clang lld`, \
-         brew: `brew install llvm`) or set {} to its full path.",
+         brew: `brew install llvm lld`) or set {} to its full path.",
         spec.canonical,
         spec.env_override
     )
@@ -461,6 +465,19 @@ mod tests {
         assert_eq!(
             got, direct_cl,
             "Direct clang-cl in tool search dirs must be preferred over creating a shim from clang on PATH"
+        );
+    }
+
+    #[test]
+    fn test_well_known_llvm_dirs_contains_homebrew_paths() {
+        let dirs = well_known_llvm_dirs();
+        assert!(
+            dirs.contains(&PathBuf::from("/opt/homebrew/opt/llvm@18/bin")),
+            "well_known_llvm_dirs must contain macOS Apple Silicon llvm@18 prefix"
+        );
+        assert!(
+            dirs.contains(&PathBuf::from("/opt/homebrew/opt/lld/bin")),
+            "well_known_llvm_dirs must contain macOS Apple Silicon lld prefix"
         );
     }
 }
