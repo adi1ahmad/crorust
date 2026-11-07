@@ -44,7 +44,7 @@ flowchart TB
 
 A Type 2 AppImage is an ELF executable that embeds its own compressed SquashFS filesystem:
 
-```
+```text
 ┌────────────────────────────────────────────────────────┐
 │ Byte 0..7: ELF Magic (\x7fELF...)                      │
 │ Byte 8..10: AppImage Magic Bytes (\x41\x49\x02 = "AI\x02")│

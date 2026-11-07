@@ -70,7 +70,7 @@ Different operating systems require fundamentally different process entry points
 
 ### 1. Desktop Platforms (Linux, macOS, Windows)
 `src/main.rs` initializes standard logging and launches the `winit` event loop on the main thread:
-```rust
+```rust,ignore
 fn main() {
     let event_loop = EventLoop::new().expect("Failed to create event loop");
     let mut app = App::new();

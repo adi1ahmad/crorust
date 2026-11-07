@@ -31,12 +31,18 @@
 //! - [`raster_transform`]: Image resampling and canvas scaling.
 //! - [`mod@symlink`]: Cross-platform symlink creation with copy fallback for unprivileged Windows NTFS.
 //! - [`temp`]: RAII-guarded temporary path lifecycle manager.
+//! - [`manual`]: In-depth architectural guide for shared CroRust primitives.
+//!
+//! Official Website: [crorust.com](https://crorust.com)
 
 pub mod archive_directory;
 pub mod boundary_archive;
 pub mod elf_resolver;
 pub mod fs;
 pub mod identity_keypair;
+pub mod manual {
+    #![doc = include_str!("../docs/crorust-common.md")]
+}
 pub mod path;
 pub mod portable;
 pub mod process;

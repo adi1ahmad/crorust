@@ -6,7 +6,15 @@ edition.workspace = true
 authors.workspace = true
 repository.workspace = true
 homepage.workspace = true
+documentation = "https://docs.rs/crorust-apple"
 license.workspace = true
+readme = "README.md"
+keywords = ["apple", "macos", "ios", "codesign", "dmg"]
+categories = ["development-tools::build-utils", "os::macos-apis"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--html-in-header", "docs/mermaid-header.html"]
 
 [dependencies]
 anyhow.workspace = true

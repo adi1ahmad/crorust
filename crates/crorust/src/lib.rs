@@ -21,6 +21,9 @@
 //! - [`download`]: Hermetic asset manager with streaming SHA-256 verification and cross-process `fd-lock` locking.
 //! - [`packaging`]: Dispatch layer invoking format bundlers (`crorust-android`, `crorust-apple`, `crorust-windows`, `crorust-linux`).
 //! - [`task`]: Terminal progress bars and spinners powered by `indicatif`.
+//! - [`docs`]: Comprehensive architectural guides and operational manuals.
+//!
+//! Official Website: [crorust.com](https://crorust.com)
 
 pub mod android;
 pub mod cargo;
@@ -29,6 +32,7 @@ pub mod commands;
 pub mod config;
 pub mod core;
 pub mod devices;
+pub mod docs;
 pub mod download;
 pub mod packaging;
 pub mod packaging_cache;

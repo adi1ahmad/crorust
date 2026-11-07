@@ -30,11 +30,17 @@
 //! - [`dmg`]: Apple disk image creation via `apple-dmg`.
 //! - [`ipa`]: iOS application package ZIP container generator.
 //! - [`plist`]: XML property list (`Info.plist`) serializer.
+//! - [`manual`]: In-depth architectural guide for pure-Rust macOS & iOS packaging.
+//!
+//! Official Website: [crorust.com](https://crorust.com)
 
 pub mod bundle;
 pub mod codesign;
 pub mod dmg;
 pub mod ipa;
+pub mod manual {
+    #![doc = include_str!("../docs/apple.md")]
+}
 pub mod plist;
 
 pub use bundle::{

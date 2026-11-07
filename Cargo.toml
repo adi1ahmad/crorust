@@ -15,7 +15,9 @@ edition = "2021"
 authors = ["Adil Ahmad <adilahmad@tuta.io>"]
 repository = "https://github.com/adi1ahmad/crorust"
 homepage = "https://crorust.com"
+documentation = "https://docs.rs/crorust"
 license = "AGPL-3.0-only"
+readme = "README.md"
 
 [workspace.dependencies]
 crorust-android = { version = "0.0.1", path = "crates/crorust-android" }

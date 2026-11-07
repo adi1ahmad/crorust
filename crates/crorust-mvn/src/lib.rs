@@ -29,9 +29,15 @@
 //! - [`model`]: Streaming XML Project Object Model (`pom.xml`) reader and dependency models.
 //! - [`registry`]: Remote artifact repository client (Google Maven, Maven Central) with caching.
 //! - [`solver`]: PubGrub version-solving algorithm adaptation.
+//! - [`manual`]: In-depth architectural guide for pure-Rust Maven dependency resolution.
+//!
+//! Official Website: [crorust.com](https://crorust.com)
 
 pub mod extract;
 pub mod interval;
+pub mod manual {
+    #![doc = include_str!("../docs/mvn.md")]
+}
 pub mod model;
 pub mod registry;
 pub mod solver;

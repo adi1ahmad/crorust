@@ -54,7 +54,7 @@ flowchart TB
 
 Android zygote and system services reject plaintext XML files. `crorust-android` encodes manifests into the binary chunk stream format expected by the Android framework:
 
-```
+```text
 ┌────────────────────────────────────────────────────────┐
 │ Chunk Header: RES_XML_TYPE (0x0003)                   │
 ├────────────────────────────────────────────────────────┤
@@ -93,7 +93,7 @@ It inserts padding bytes into the ZIP local header extra field (`0xd935` Android
 
 Scheme v2 protects against ZIP metadata tampering by signing the entire binary file.
 
-```
+```text
 ┌────────────────────────────────────────────────────────┐
 │ Section 1: Local File Headers & Entry Payloads         │
 ├────────────────────────────────────────────────────────┤

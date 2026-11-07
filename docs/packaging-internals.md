@@ -76,7 +76,7 @@ Instead of hashing individual files like legacy JAR signatures, Scheme v2 treats
 
 Apple executables are wrapped in structured `.app` directory trees:
 
-```
+```text
 MyApp.app/
 ├── Contents/                             # macOS bundle layout
 │   ├── MacOS/
@@ -135,7 +135,7 @@ flowchart LR
 
 A Type 2 AppImage is an ELF executable that contains its own compressed filesystem:
 
-```
+```text
 ┌────────────────────────────────────────────────────────┐
 │  128KB Precompiled ELF Runtime Stub                    │
 │  (Contains AppImage Magic bytes at offset 8)           │

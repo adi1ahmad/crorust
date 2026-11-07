@@ -54,7 +54,7 @@ flowchart TB
 
 An MSIX container is an uncompressed or deflated ZIP archive structured according to ECMA-376 Open Packaging Conventions:
 
-```
+```text
 MyApp.msix/
 ├── [Content_Types].xml               # Declares MIME types for all extensions
 ├── AppxManifest.xml                  # Identity, capabilities, and visual elements

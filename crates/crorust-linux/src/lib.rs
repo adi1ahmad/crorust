@@ -27,9 +27,15 @@
 //! - [`appdir`]: Freedesktop-compliant application directory layout.
 //! - [`appimage`]: Pure-Rust SquashFS packaging and runtime stub integration.
 //! - [`portable`]: Portable Linux binary packaging.
+//! - [`manual`]: In-depth architectural guide for pure-Rust Linux AppImage packaging.
+//!
+//! Official Website: [crorust.com](https://crorust.com)
 
 pub mod appdir;
 pub mod appimage;
+pub mod manual {
+    #![doc = include_str!("../docs/linux.md")]
+}
 pub mod portable;
 
 pub use appdir::AppDirFilesystemLayout;

@@ -26,7 +26,8 @@
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
 
   function isDarkTheme() {
-    const themeAttr = document.documentElement.getAttribute('data-theme');
+    const themeAttr = document.documentElement.getAttribute('data-theme')
+      || document.documentElement.getAttribute('data-docs-rs-theme');
     const localTheme = window.localStorage ? window.localStorage.getItem('rustdoc-theme') : null;
     const currentTheme = (themeAttr || localTheme || '').toLowerCase();
 
@@ -120,7 +121,7 @@
   }
 
   window.addEventListener('DOMContentLoaded', async () => {
-    const codeBlocks = document.querySelectorAll('pre.language-mermaid, code.language-mermaid');
+    const codeBlocks = document.querySelectorAll('pre.language-mermaid');
 
     for (const block of codeBlocks) {
       const container = document.createElement('div');
@@ -129,8 +130,7 @@
       container.setAttribute('data-mermaid-src', rawText);
       container.textContent = rawText;
 
-      const target = block.tagName.toLowerCase() === 'code' ? block.parentElement : block;
-      target.replaceWith(container);
+      block.replaceWith(container);
     }
 
     await renderAllMermaidNodes();
@@ -138,12 +138,12 @@
     // Listen for rustdoc theme attribute mutations to adapt immediately
     const observer = new MutationObserver(async (mutations) => {
       for (const m of mutations) {
-        if (m.attributeName === 'data-theme') {
+        if (m.attributeName === 'data-theme' || m.attributeName === 'data-docs-rs-theme') {
           await renderAllMermaidNodes();
           break;
         }
       }
     });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-docs-rs-theme'] });
   });
 </script>

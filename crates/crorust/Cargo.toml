@@ -1,12 +1,20 @@
 [package]
 name = "crorust"
-description = "Cross-platform build and packaging tool for Rust desktop & mobile apps without external toolchains."
+description = "Cross-platform build, packaging and signing tool for Rust desktop & mobile apps without external toolchains."
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 repository.workspace = true
 homepage.workspace = true
+documentation.workspace = true
 license.workspace = true
+readme = "README.md"
+keywords = ["cross-platform", "android", "ios", "windows", "cargo"]
+categories = ["development-tools::cargo-plugins", "development-tools::build-utils", "command-line-utilities"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--html-in-header", "docs/mermaid-header.html"]
 
 [features]
 default = [

@@ -1,12 +1,20 @@
 [package]
 name = "crorust-common"
-description = "Shared cryptographic, image scaling, and packaging utilities for CroRust."
+description = "Core shared primitives for CroRust: page-aligned ZIP streaming, fast streaming SHA-256 digests, and parallel raster resizers."
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 repository.workspace = true
 homepage.workspace = true
+documentation = "https://docs.rs/crorust-common"
 license.workspace = true
+readme = "README.md"
+keywords = ["zip", "hash", "image", "resizer", "streaming"]
+categories = ["development-tools::build-utils"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--html-in-header", "docs/mermaid-header.html"]
 
 [dependencies]
 anyhow.workspace = true

@@ -15,7 +15,7 @@ Traditional workflows require installing massive host suites (Xcode on macOS, Vi
 
 The cache directory is laid out with strict separation between host-specific binaries and host-independent target sysroots:
 
-```
+```text
 <cache_root>/
 ├── tools/                                # Host-specific executable utilities
 │   ├── x86_64-unknown-linux-gnu/         # Linux x86_64 tools

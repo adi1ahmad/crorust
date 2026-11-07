@@ -31,7 +31,13 @@
 //! - [`package`]: Open Packaging Conventions (OPC) container builder and 64KB block map engine.
 //! - [`portable`]: Portable Windows executable packaging.
 //! - [`security`]: Authenticode PKCS#7 signature construction and verification.
+//! - [`manual`]: In-depth architectural guide for pure-Rust Windows MSIX packaging.
+//!
+//! Official Website: [crorust.com](https://crorust.com)
 
+pub mod manual {
+    #![doc = include_str!("../docs/windows.md")]
+}
 pub mod mrm;
 pub mod package;
 pub mod portable;

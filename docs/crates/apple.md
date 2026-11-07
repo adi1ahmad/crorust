@@ -60,7 +60,7 @@ macOS and iOS enforce distinct directory conventions:
 
 ### macOS Application Bundle (`MyApp.app/`)
 macOS bundles use a nested `Contents/` hierarchy:
-```
+```text
 MyApp.app/
 └── Contents/
     ├── MacOS/
@@ -74,7 +74,7 @@ MyApp.app/
 
 ### iOS Application Bundle (`MyApp.app/`)
 iOS bundles use a flat structure without `Contents/`:
-```
+```text
 MyApp.app/
 ├── my_app                            # Mach-O executable
 ├── Info.plist                        # Bundle metadata
@@ -90,7 +90,7 @@ MyApp.app/
 
 Apple's kernel verifies executables by inspecting the `LC_CODE_SIGNATURE` load command at runtime. `crorust-apple` utilizes `apple-codesign` to build the required signature SuperBlob in pure Rust:
 
-```
+```text
 ┌────────────────────────────────────────────────────────┐
 │ Mach-O Binary Header (64-bit, CPU_TYPE_ARM64 / X86_64) │
 ├────────────────────────────────────────────────────────┤

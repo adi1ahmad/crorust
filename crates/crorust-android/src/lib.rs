@@ -31,9 +31,15 @@
 //! - [`protocol`]: Android binary chunk format primitives and string pool builders.
 //! - [`resources`]: Resource table (`resources.arsc`) compiler and framework symbol catalogs.
 //! - [`aab`]: Android App Bundle protocol buffer container generator.
+//! - [`manual`]: In-depth architectural guide for pure-Rust Android packaging.
+//!
+//! Official Website: [crorust.com](https://crorust.com)
 
 pub mod aab;
 pub mod manifest;
+pub mod manual {
+    #![doc = include_str!("../docs/android.md")]
+}
 pub mod package;
 pub mod protocol;
 pub mod resources;

@@ -142,7 +142,7 @@ Accepts compiled binaries and manifest configurations, generating the final cont
 
 ## 5. Directory Structure & Workspace Layout
 
-```
+```text
 crorust/
 ├── Cargo.toml                          # Workspace root manifest
 ├── README.md                           # Main documentation entrypoint

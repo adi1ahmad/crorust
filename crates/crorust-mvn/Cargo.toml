@@ -1,12 +1,20 @@
 [package]
 name = "crorust-mvn"
-description = "Library for fetching and resolving maven dependencies for CroRust."
+description = "Pure-Rust PubGrub Maven dependency solver and AAR/JAR extractor for Android dependencies without Gradle or JVM daemons."
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 repository.workspace = true
 homepage.workspace = true
+documentation = "https://docs.rs/crorust-mvn"
 license.workspace = true
+readme = "README.md"
+keywords = ["maven", "pubgrub", "android", "aar", "gradle"]
+categories = ["development-tools::build-utils", "algorithms"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--html-in-header", "docs/mermaid-header.html"]
 
 [dependencies]
 anyhow.workspace = true
