@@ -61,7 +61,7 @@ Add `crorust-android` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-crorust-android = "0.0.1"
+crorust-android = "0.0.2"
 ```
 
 ### Programmatic APK Assembly Example

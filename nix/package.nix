@@ -11,7 +11,7 @@
 
 rustPlatform.buildRustPackage rec {
   pname = "crorust";
-  version = "0.0.1";
+  version = "0.0.2";
 
   src = lib.cleanSourceWith {
     src = ../.;

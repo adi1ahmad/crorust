@@ -59,7 +59,7 @@ Add `crorust-common` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-crorust-common = "0.0.1"
+crorust-common = "0.0.2"
 ```
 
 ### Streaming Checksum Example

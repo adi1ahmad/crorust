@@ -10,7 +10,7 @@ exclude = [
 ]
 
 [workspace.package]
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 authors = ["Adil Ahmad <adilahmad@tuta.io>"]
 repository = "https://github.com/adi1ahmad/crorust"
@@ -20,12 +20,12 @@ license = "AGPL-3.0-only"
 readme = "README.md"
 
 [workspace.dependencies]
-crorust-android = { version = "0.0.1", path = "crates/crorust-android" }
-crorust-apple = { version = "0.0.1", path = "crates/crorust-apple" }
-crorust-common = { version = "0.0.1", path = "crates/crorust-common" }
-crorust-linux = { version = "0.0.1", path = "crates/crorust-linux" }
-crorust-mvn = { version = "0.0.1", path = "crates/crorust-mvn" }
-crorust-windows = { version = "0.0.1", path = "crates/crorust-windows" }
+crorust-android = { version = "0.0.2", path = "crates/crorust-android" }
+crorust-apple = { version = "0.0.2", path = "crates/crorust-apple" }
+crorust-common = { version = "0.0.2", path = "crates/crorust-common" }
+crorust-linux = { version = "0.0.2", path = "crates/crorust-linux" }
+crorust-mvn = { version = "0.0.2", path = "crates/crorust-mvn" }
+crorust-windows = { version = "0.0.2", path = "crates/crorust-windows" }
 
 # General Utilities
 anyhow = "1.0"

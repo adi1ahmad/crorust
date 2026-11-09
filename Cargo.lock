@@ -1097,7 +1097,7 @@ dependencies = [
 
 [[package]]
 name = "crorust"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "app-store-connect",
@@ -1148,7 +1148,7 @@ dependencies = [
 
 [[package]]
 name = "crorust-android"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "base64 0.20.0",
@@ -1173,7 +1173,7 @@ dependencies = [
 
 [[package]]
 name = "crorust-apple"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "apple-codesign",
@@ -1198,7 +1198,7 @@ dependencies = [
 
 [[package]]
 name = "crorust-common"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1219,7 +1219,7 @@ dependencies = [
 
 [[package]]
 name = "crorust-linux"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "backhand",
@@ -1235,7 +1235,7 @@ dependencies = [
 
 [[package]]
 name = "crorust-mvn"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "base64 0.20.0",
@@ -1252,14 +1252,14 @@ dependencies = [
 
 [[package]]
 name = "crorust-runtime-stub"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "backhand",
 ]
 
 [[package]]
 name = "crorust-windows"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "base64 0.20.0",

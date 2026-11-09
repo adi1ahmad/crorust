@@ -58,7 +58,7 @@ Add `crorust-apple` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-crorust-apple = "0.0.1"
+crorust-apple = "0.0.2"
 ```
 
 ### Programmatic App Bundle Creation Example

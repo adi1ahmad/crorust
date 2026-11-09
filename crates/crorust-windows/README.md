@@ -61,7 +61,7 @@ Add `crorust-windows` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-crorust-windows = "0.0.1"
+crorust-windows = "0.0.2"
 ```
 
 ### Programmatic MSIX Creation Example

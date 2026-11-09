@@ -168,55 +168,204 @@ runs:
         cache-on-failure: false
         save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
 
-    - name: Install Trunk for Web builds (Linux, cached)
+    - name: Install Trunk & wasm tools for Web builds (Linux, cached)
       if: runner.os == 'Linux' && inputs.platform == 'web'
       shell: bash
       run: |
-        if command -v trunk >/dev/null 2>&1; then
-          trunk --version
-          exit 0
-        fi
-        url="https://github.com/trunk-rs/trunk/releases/download/v0.21.8/trunk-x86_64-unknown-linux-gnu.tar.gz"
-        curl -sSfL "$url" -o /tmp/trunk.tar.gz
-        echo "cd9fb2822c9f0ae111737500c179226cb080241ac55002c1db7344aa51a97fec  /tmp/trunk.tar.gz" | sha256sum -c -
         mkdir -p "$HOME/.cargo/bin"
-        tar -xzf /tmp/trunk.tar.gz -C "$HOME/.cargo/bin"
+
+        # 1. Install Trunk v0.21.8 if not already present
+        if ! command -v trunk >/dev/null 2>&1; then
+          if command -v gh >/dev/null 2>&1; then
+            gh release download v0.21.8 --repo trunk-rs/trunk --pattern "trunk-x86_64-unknown-linux-gnu.tar.gz" --output /tmp/trunk.tar.gz --clobber
+          else
+            url="https://github.com/trunk-rs/trunk/releases/download/v0.21.8/trunk-x86_64-unknown-linux-gnu.tar.gz"
+            curl -sSfL --retry 5 --retry-delay 2 --retry-connrefused "$url" -o /tmp/trunk.tar.gz
+          fi
+          echo "cd9fb2822c9f0ae111737500c179226cb080241ac55002c1db7344aa51a97fec  /tmp/trunk.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/trunk.tar.gz -C "$HOME/.cargo/bin"
+          rm -f /tmp/trunk.tar.gz
+        fi
         trunk --version
 
-    - name: Install Trunk for Web builds (macOS, cached)
+        # 2. Install wasm-bindgen 0.2.129 to prevent on-the-fly CDN timeout crashes
+        if ! command -v wasm-bindgen >/dev/null 2>&1 || [[ "$(wasm-bindgen --version 2>&1)" != *"0.2.129"* ]]; then
+          if command -v gh >/dev/null 2>&1; then
+            gh release download 0.2.129 --repo wasm-bindgen/wasm-bindgen --pattern "wasm-bindgen-0.2.129-x86_64-unknown-linux-musl.tar.gz" --output /tmp/wasm-bindgen.tar.gz --clobber
+          else
+            wb_url="https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.129/wasm-bindgen-0.2.129-x86_64-unknown-linux-musl.tar.gz"
+            curl -sSfL --retry 5 --retry-delay 2 --retry-connrefused "$wb_url" -o /tmp/wasm-bindgen.tar.gz
+          fi
+          echo "82d12bb940e2d4e72e0d5605387fc1b8ca179044e012b620f0ce4e7440e8320e  /tmp/wasm-bindgen.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/wasm-bindgen.tar.gz --strip-components=1 -C "$HOME/.cargo/bin"
+          rm -f /tmp/wasm-bindgen.tar.gz
+        fi
+        wasm-bindgen --version
+
+        # 3. Resilient wasm-opt installation with graceful fallback
+        if ! command -v wasm-opt >/dev/null 2>&1 || ! wasm-opt --version >/dev/null 2>&1; then
+          echo "Installing wasm-opt version_116 (Linux x86_64)..."
+          install_wasm_opt() {
+            set -e
+            if command -v gh >/dev/null 2>&1; then
+              gh release download version_116 --repo WebAssembly/binaryen --pattern "binaryen-version_116-x86_64-linux.tar.gz" --output /tmp/binaryen.tar.gz --clobber
+            else
+              opt_url="https://github.com/WebAssembly/binaryen/releases/download/version_116/binaryen-version_116-x86_64-linux.tar.gz"
+              curl -sSfL --retry 5 --retry-delay 2 --retry-connrefused "$opt_url" -o /tmp/binaryen.tar.gz
+            fi
+            echo "c55b74f3109cdae97490faf089b0286d3bba926bb6ea5ed00c8c784fc53718fd  /tmp/binaryen.tar.gz" | sha256sum -c -
+            tar -xzf /tmp/binaryen.tar.gz --strip-components=2 -C "$HOME/.cargo/bin" "binaryen-version_116/bin/wasm-opt"
+            rm -f /tmp/binaryen.tar.gz
+            wasm-opt --version
+          }
+
+          if install_wasm_opt; then
+            echo "wasm-opt installed and verified successfully."
+          else
+            echo "::warning::wasm-opt pre-installation failed. Purging incomplete files to allow Trunk fallback."
+            rm -f "$HOME/.cargo/bin/wasm-opt" /tmp/binaryen.tar.gz
+          fi
+        fi
+
+    - name: Install Trunk & wasm tools for Web builds (macOS, cached)
       if: runner.os == 'macOS' && inputs.platform == 'web'
       shell: bash
       run: |
-        if command -v trunk >/dev/null 2>&1; then
-          trunk --version
-          exit 0
-        fi
-        url="https://github.com/trunk-rs/trunk/releases/download/v0.21.8/trunk-aarch64-apple-darwin.tar.gz"
-        curl -sSfL "$url" -o /tmp/trunk.tar.gz
-        echo "934e2fba770cfc20b4e3498e35fbe8a03b0e6e60580cdc36eb070002834bc208  /tmp/trunk.tar.gz" | shasum -a 256 -c -
         mkdir -p "$HOME/.cargo/bin"
-        tar -xzf /tmp/trunk.tar.gz -C "$HOME/.cargo/bin"
+
+        # 1. Install Trunk v0.21.8 if not already present
+        if ! command -v trunk >/dev/null 2>&1; then
+          if command -v gh >/dev/null 2>&1; then
+            gh release download v0.21.8 --repo trunk-rs/trunk --pattern "trunk-aarch64-apple-darwin.tar.gz" --output /tmp/trunk.tar.gz --clobber
+          else
+            url="https://github.com/trunk-rs/trunk/releases/download/v0.21.8/trunk-aarch64-apple-darwin.tar.gz"
+            curl -sSfL --retry 5 --retry-delay 2 --retry-connrefused "$url" -o /tmp/trunk.tar.gz
+          fi
+          echo "934e2fba770cfc20b4e3498e35fbe8a03b0e6e60580cdc36eb070002834bc208  /tmp/trunk.tar.gz" | shasum -a 256 -c -
+          tar -xzf /tmp/trunk.tar.gz -C "$HOME/.cargo/bin"
+          rm -f /tmp/trunk.tar.gz
+        fi
         trunk --version
 
-    - name: Install Trunk for Web builds (Windows, cached)
+        # 2. Install wasm-bindgen 0.2.129 to prevent on-the-fly CDN timeout crashes
+        if ! command -v wasm-bindgen >/dev/null 2>&1 || [[ "$(wasm-bindgen --version 2>&1)" != *"0.2.129"* ]]; then
+          if command -v gh >/dev/null 2>&1; then
+            gh release download 0.2.129 --repo wasm-bindgen/wasm-bindgen --pattern "wasm-bindgen-0.2.129-aarch64-apple-darwin.tar.gz" --output /tmp/wasm-bindgen.tar.gz --clobber
+          else
+            wb_url="https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.129/wasm-bindgen-0.2.129-aarch64-apple-darwin.tar.gz"
+            curl -sSfL --retry 5 --retry-delay 2 --retry-connrefused "$wb_url" -o /tmp/wasm-bindgen.tar.gz
+          fi
+          echo "81d4a23d56b3c3eb8187658329116d50e0b228a93b343825fb71f70179051cd1  /tmp/wasm-bindgen.tar.gz" | shasum -a 256 -c -
+          tar -xzf /tmp/wasm-bindgen.tar.gz --strip-components=1 -C "$HOME/.cargo/bin"
+          rm -f /tmp/wasm-bindgen.tar.gz
+        fi
+        wasm-bindgen --version
+
+        # 3. Resilient wasm-opt installation with graceful fallback
+        if ! command -v wasm-opt >/dev/null 2>&1 || ! wasm-opt --version >/dev/null 2>&1; then
+          echo "Installing wasm-opt version_116 (macOS arm64)..."
+          install_wasm_opt() {
+            set -e
+            mkdir -p "$HOME/.cargo/lib"
+            if command -v gh >/dev/null 2>&1; then
+              gh release download version_116 --repo WebAssembly/binaryen --pattern "binaryen-version_116-arm64-macos.tar.gz" --output /tmp/binaryen.tar.gz --clobber
+            else
+              opt_url="https://github.com/WebAssembly/binaryen/releases/download/version_116/binaryen-version_116-arm64-macos.tar.gz"
+              curl -sSfL --retry 5 --retry-delay 2 --retry-connrefused "$opt_url" -o /tmp/binaryen.tar.gz
+            fi
+            echo "d8c978aec366629eae6fefbcedaf5093b829e4c5ab0e2990973b6e337c544867  /tmp/binaryen.tar.gz" | shasum -a 256 -c -
+            tar -xzf /tmp/binaryen.tar.gz --strip-components=1 -C "$HOME/.cargo" "binaryen-version_116/bin/wasm-opt" "binaryen-version_116/lib/libbinaryen.dylib"
+            cp -f "$HOME/.cargo/lib/libbinaryen.dylib" "$HOME/.cargo/bin/" 2>/dev/null || true
+            rm -f /tmp/binaryen.tar.gz
+            wasm-opt --version
+          }
+
+          if install_wasm_opt; then
+            echo "wasm-opt installed and verified successfully."
+          else
+            echo "::warning::wasm-opt pre-installation failed. Purging incomplete files to allow Trunk fallback."
+            rm -f "$HOME/.cargo/bin/wasm-opt" "$HOME/.cargo/bin/libbinaryen.dylib" "$HOME/.cargo/lib/libbinaryen.dylib" /tmp/binaryen.tar.gz
+          fi
+        fi
+
+    - name: Install Trunk & wasm tools for Web builds (Windows, cached)
       if: runner.os == 'Windows' && inputs.platform == 'web'
       shell: pwsh
       run: |
-        if (Get-Command trunk -ErrorAction SilentlyContinue) {
-          trunk --version
-          exit 0
-        }
-        $url = "https://github.com/trunk-rs/trunk/releases/download/v0.21.8/trunk-x86_64-pc-windows-msvc.zip"
-        $zip = Join-Path $env:TEMP "trunk.zip"
-        Invoke-WebRequest -Uri $url -OutFile $zip
-        $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
-        if ($hash -ne "deb0db2a660b8e9ea3064a3862822e099fd01be06424d3125dbf917382195131") {
-          throw "trunk checksum mismatch: $hash"
-        }
         $dest = Join-Path $env:USERPROFILE ".cargo\bin"
         New-Item -ItemType Directory -Force -Path $dest | Out-Null
-        Expand-Archive $zip -DestinationPath $dest -Force
+
+        # 1. Install Trunk v0.21.8 if not already present
+        if (-not (Get-Command trunk -ErrorAction SilentlyContinue)) {
+          $zip = Join-Path $env:TEMP "trunk.zip"
+          if (Get-Command gh -ErrorAction SilentlyContinue) {
+            gh release download v0.21.8 --repo trunk-rs/trunk --pattern "trunk-x86_64-pc-windows-msvc.zip" --output $zip --clobber
+          } else {
+            $url = "https://github.com/trunk-rs/trunk/releases/download/v0.21.8/trunk-x86_64-pc-windows-msvc.zip"
+            curl.exe -sSfL --retry 5 --retry-delay 2 --retry-connrefused "$url" -o "$zip"
+          }
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne "deb0db2a660b8e9ea3064a3862822e099fd01be06424d3125dbf917382195131") {
+            throw "trunk checksum mismatch: $hash"
+          }
+          Expand-Archive $zip -DestinationPath $dest -Force
+          Remove-Item -Force $zip
+        }
         trunk --version
+
+        # 2. Install wasm-bindgen 0.2.129 if not already present
+        $wbCmd = Get-Command wasm-bindgen -ErrorAction SilentlyContinue
+        if (-not $wbCmd -or ((wasm-bindgen --version) -notmatch "0.2.129")) {
+          $tarGz = Join-Path $env:TEMP "wasm-bindgen.tar.gz"
+          if (Get-Command gh -ErrorAction SilentlyContinue) {
+            gh release download 0.2.129 --repo wasm-bindgen/wasm-bindgen --pattern "wasm-bindgen-0.2.129-x86_64-pc-windows-msvc.tar.gz" --output $tarGz --clobber
+          } else {
+            $wbUrl = "https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.129/wasm-bindgen-0.2.129-x86_64-pc-windows-msvc.tar.gz"
+            curl.exe -sSfL --retry 5 --retry-delay 2 --retry-connrefused "$wbUrl" -o "$tarGz"
+          }
+          $wbHash = (Get-FileHash $tarGz -Algorithm SHA256).Hash.ToLower()
+          if ($wbHash -ne "79e348c169d0c10c0b287647f1e753d0985353ca96800bc29be8f4261baf13e6") {
+            throw "wasm-bindgen checksum mismatch: $wbHash"
+          }
+          C:\Windows\System32\tar.exe -xzf $tarGz --strip-components=1 -C $dest
+          Remove-Item -Force $tarGz
+        }
+        wasm-bindgen --version
+
+        # 3. Resilient wasm-opt installation with graceful fallback
+        $optWorks = $false
+        if (Get-Command wasm-opt -ErrorAction SilentlyContinue) {
+          try {
+            $v = & wasm-opt --version 2>&1
+            if ($LASTEXITCODE -eq 0) { $optWorks = $true }
+          } catch {}
+        }
+
+        if (-not $optWorks) {
+          Write-Host "Installing wasm-opt version_116 (Windows x86_64)..."
+          $optTar = Join-Path $env:TEMP "binaryen.tar.gz"
+          try {
+            if (Get-Command gh -ErrorAction SilentlyContinue) {
+              gh release download version_116 --repo WebAssembly/binaryen --pattern "binaryen-version_116-x86_64-windows.tar.gz" --output $optTar --clobber
+            } else {
+              $optUrl = "https://github.com/WebAssembly/binaryen/releases/download/version_116/binaryen-version_116-x86_64-windows.tar.gz"
+              curl.exe -sSfL --retry 5 --retry-delay 2 --retry-connrefused "$optUrl" -o "$optTar"
+            }
+            $optHash = (Get-FileHash $optTar -Algorithm SHA256).Hash.ToLower()
+            if ($optHash -ne "06a18d71ef294150c61737899d9b3290dbc635dba4dc4f80f528e04d4eaef478") {
+              throw "wasm-opt checksum mismatch: $optHash"
+            }
+            C:\Windows\System32\tar.exe -xzf $optTar --strip-components=2 -C $dest "binaryen-version_116/bin/wasm-opt.exe"
+            Remove-Item -Force -ErrorAction SilentlyContinue $optTar
+            
+            & wasm-opt --version
+            if ($LASTEXITCODE -ne 0) { throw "wasm-opt failed verification test" }
+            Write-Host "wasm-opt installed and verified successfully."
+          } catch {
+            Write-Warning "wasm-opt pre-installation failed: $_. Purging incomplete files to allow Trunk fallback."
+            Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $dest "wasm-opt.exe"), $optTar
+          }
+        }
 
     - name: Record toolchain state before build
       shell: bash

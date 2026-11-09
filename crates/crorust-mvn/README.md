@@ -64,7 +64,7 @@ Add `crorust-mvn` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-crorust-mvn = "0.0.1"
+crorust-mvn = "0.0.2"
 ```
 
 ### Dependency Resolution Example

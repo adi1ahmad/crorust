@@ -60,7 +60,7 @@ Add `crorust-linux` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-crorust-linux = "0.0.1"
+crorust-linux = "0.0.2"
 ```
 
 ### Programmatic AppImage Creation Example
