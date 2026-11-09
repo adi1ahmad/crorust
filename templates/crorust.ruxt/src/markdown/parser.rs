@@ -1,6 +1,5 @@
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Item<'a> {
-
     Newline,
 
     Text(Style, &'a str),
@@ -22,7 +21,6 @@ pub enum Item<'a> {
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct Style {
-
     pub heading: bool,
 
     pub quoted: bool,
@@ -43,7 +41,6 @@ pub struct Style {
 }
 
 pub struct Parser<'a> {
-
     s: &'a str,
 
     start_of_line: bool,
@@ -172,7 +169,6 @@ impl<'a> Iterator for Parser<'a> {
             }
 
             if self.start_of_line {
-
                 if self.s.starts_with(' ') {
                     let length = self.s.find(|c| c != ' ').unwrap_or(self.s.len());
                     self.s = &self.s[length..];

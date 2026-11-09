@@ -37,6 +37,10 @@ pub struct RuxtApp {
 impl RuxtApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         egui_extras::install_image_loaders(&cc.egui_ctx);
+        cc.egui_ctx.add_image_loader(std::sync::Arc::new(
+            crate::platform::UniversalSvgLoader::new(),
+        ));
+        crate::ui::scroll::configure_input_options(&cc.egui_ctx);
 
         #[cfg(feature = "accessibility")]
         cc.egui_ctx
@@ -75,6 +79,7 @@ impl RuxtApp {
     fn top_navigation_bar(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         egui::Panel::top("top_navigation_bar").show(ui, |ui| {
             egui::ScrollArea::horizontal()
+                .id_salt("top_nav_bar_scroll")
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
                     egui::menu::MenuBar::new().ui(ui, |ui| {
@@ -104,7 +109,6 @@ impl RuxtApp {
 
                             if self.state.navigation.mode == crate::navigation::AppMode::Workspace {
                                 ui.separator();
-                            
                                 self.view_menu(ui);
                             }
                             self.help_menu(ui);
@@ -135,14 +139,30 @@ impl RuxtApp {
                             ui.separator();
 
                             let fps = self.state.settings_panel.fps();
-                            ui.label(egui::RichText::new(format!("{fps:.0} FPS")).small().color(
-                                if fps >= 55.0 {
-                                    egui::Color32::from_rgb(120, 210, 120)
-                                } else {
-                                    egui::Color32::from_rgb(230, 180, 80)
-                                },
-                            ))
+                            ui.label(
+                                egui::RichText::new(self.state.settings_panel.fps_display_str())
+                                    .small()
+                                    .color(if fps >= 55.0 {
+                                        egui::Color32::from_rgb(120, 210, 120)
+                                    } else {
+                                        egui::Color32::from_rgb(230, 180, 80)
+                                    }),
+                            )
                             .on_hover_text("Real-time GPU frame presentation frequency");
+
+                            ui.separator();
+
+                            if !is_mobile && ui.available_width() > 280.0 {
+                                if ui.button(egui::RichText::new("📦 crates.io").small().strong()).on_hover_text("View crorust on crates.io: https://crates.io/crates/crorust").clicked() {
+                                    ui.ctx().open_url(egui::OpenUrl::new_tab("https://crates.io/crates/crorust"));
+                                }
+                                if ui.button(egui::RichText::new("📖 docs.rs").small().strong()).on_hover_text("Browse API documentation on docs.rs: https://docs.rs/crorust/latest/crorust/").clicked() {
+                                    ui.ctx().open_url(egui::OpenUrl::new_tab("https://docs.rs/crorust/latest/crorust/"));
+                                }
+                                if ui.button(egui::RichText::new("⭐ GitHub").small().strong()).on_hover_text("Star and inspect source on GitHub: https://github.com/adi1ahmad/crorust").clicked() {
+                                    ui.ctx().open_url(egui::OpenUrl::new_tab("https://github.com/adi1ahmad/crorust"));
+                                }
+                            }
                         });
                     });
                 });
@@ -168,7 +188,9 @@ impl RuxtApp {
 
         if ui
             .selectable_label(current == AppMode::Workspace, "💻 Template Showcase")
-            .on_hover_text("Interactive multi-window workspace with live widgets & ruxt framework manual")
+            .on_hover_text(
+                "Interactive multi-window workspace with live widgets & ruxt framework manual",
+            )
             .clicked()
         {
             self.state.navigation.navigate_to_mode(AppMode::Workspace);
@@ -205,16 +227,29 @@ impl RuxtApp {
 
                 ui.add_space(16.0);
                 ui.separator();
-                ui.label(egui::RichText::new("External Links").small().weak());
-                ui.hyperlink_to("GitHub Repository", "https://github.com/adi1ahmad/crorust");
-                ui.hyperlink_to("Report Issue", "https://github.com/adi1ahmad/crorust/issues");
+                ui.label(
+                    egui::RichText::new("Ecosystem Authority Links")
+                        .small()
+                        .weak(),
+                );
+                ui.hyperlink_to("📦 crates.io Package", "https://crates.io/crates/crorust");
+                ui.hyperlink_to(
+                    "📖 docs.rs Documentation",
+                    "https://docs.rs/crorust/latest/crorust/",
+                );
+                ui.hyperlink_to(
+                    "⭐ GitHub Repository",
+                    "https://github.com/adi1ahmad/crorust",
+                );
+                ui.hyperlink_to(
+                    "🐛 Report an Issue",
+                    "https://github.com/adi1ahmad/crorust/issues",
+                );
             });
     }
 
-  
     fn view_menu(&mut self, ui: &mut egui::Ui) {
         ui.menu_button("View", |ui| {
-            
             ui.set_min_width(220.0);
 
             let organize_shortcut = egui::KeyboardShortcut::new(
@@ -281,8 +316,6 @@ impl RuxtApp {
                     ui.send_viewport_cmd(egui::ViewportCommand::Close);
                 }
             }
-   
-          
 
             let mut sidebar_open = self.state.windows.sidebar_open();
             if ui
@@ -328,10 +361,20 @@ impl RuxtApp {
             }
 
             ui.separator();
+            ui.label(
+                egui::RichText::new("Ecosystem & Documentation")
+                    .small()
+                    .weak(),
+            );
 
-            ui.hyperlink_to("📖 crorust Documentation", "https://crorust.com");
+            ui.hyperlink_to("🌐 Official Website (crorust.com)", "https://crorust.com");
+            ui.hyperlink_to("📦 crates.io Package", "https://crates.io/crates/crorust");
             ui.hyperlink_to(
-                "📦 crorust GitHub Repository",
+                "📖 docs.rs Documentation",
+                "https://docs.rs/crorust/latest/crorust/",
+            );
+            ui.hyperlink_to(
+                "⭐ GitHub Repository",
                 "https://github.com/adi1ahmad/crorust",
             );
             ui.hyperlink_to(
@@ -352,12 +395,14 @@ impl eframe::App for RuxtApp {
         visuals.panel_fill.to_normalized_gamma_f32()
     }
 
-    fn raw_input_hook(&mut self, _ctx: &egui::Context, _raw_input: &mut egui::RawInput) {
+    fn raw_input_hook(&mut self, _ctx: &egui::Context, raw_input: &mut egui::RawInput) {
+        crate::ui::scroll::tune_raw_input(raw_input);
+
         #[cfg(target_os = "android")]
         {
             let events = crate::platform::android::drain_ime_events();
             if !events.is_empty() {
-                _raw_input.events.extend(events);
+                raw_input.events.extend(events);
             }
         }
     }
@@ -386,14 +431,26 @@ impl eframe::App for RuxtApp {
 
         self.state.settings_panel.ui(ui, frame);
 
-        egui::CentralPanel::no_frame().show(ui, |ui| {
-            match self.state.navigation.mode {
-                crate::navigation::AppMode::Home => {
-                    self.website_view.ui(ui, &mut self.state.navigation);
-                }
-                crate::navigation::AppMode::Workspace => {
-                    self.state.windows.ui(ui);
-                }
+        if self.state.navigation.mode == crate::navigation::AppMode::Workspace {
+            if self.state.navigation.pending_hash_sync {
+                self.state
+                    .windows
+                    .set_selected_tutorial_chapter(self.state.navigation.ruxt_chapter);
+                self.state.navigation.pending_hash_sync = false;
+            } else if self.state.windows.selected_tutorial_chapter()
+                != self.state.navigation.ruxt_chapter
+            {
+                self.state.navigation.ruxt_chapter = self.state.windows.selected_tutorial_chapter();
+                self.state.navigation.sync_url_hash();
+            }
+        }
+
+        egui::CentralPanel::no_frame().show(ui, |ui| match self.state.navigation.mode {
+            crate::navigation::AppMode::Home => {
+                self.website_view.ui(ui, &mut self.state.navigation);
+            }
+            crate::navigation::AppMode::Workspace => {
+                self.state.windows.ui(ui);
             }
         });
 

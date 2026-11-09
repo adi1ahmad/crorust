@@ -13,7 +13,7 @@ pub use app::RuxtApp;
 pub use manual::RuxtManualWindow;
 pub use markdown::Editor;
 pub use workspace::views::{DisplayCalibration, WidgetShowcase};
-pub use workspace::{is_mobile, AppView, View, ViewItem, ViewItem as Demo, WindowManager};
+pub use workspace::{AppView, View, ViewItem, ViewItem as Demo, WindowManager, is_mobile};
 
 pub const LOREM_IPSUM: &str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
 
@@ -29,10 +29,16 @@ pub(crate) fn seconds_since_midnight() -> f64 {
 pub fn rust_view_ui(ui: &mut egui::Ui, code: &str) {
     let language = "rs";
     let theme = egui_extras::syntax_highlighting::CodeTheme::from_memory(ui.ctx(), ui.style());
-    egui_extras::syntax_highlighting::code_view_ui(ui, &theme, code, language);
+    let max_w = ui.available_width();
+    let scroll_id = ui.auto_id_with(code);
+    egui::ScrollArea::horizontal()
+        .id_salt(scroll_id)
+        .auto_shrink([false, false])
+        .max_width(max_w)
+        .show(ui, |ui| {
+            egui_extras::syntax_highlighting::code_view_ui(ui, &theme, code, language);
+        });
 }
-
-
 
 #[macro_export]
 macro_rules! crorust_github_link_file {

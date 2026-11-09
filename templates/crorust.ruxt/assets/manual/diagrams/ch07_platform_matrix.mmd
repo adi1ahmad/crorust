@@ -1,0 +1,36 @@
+flowchart TD
+    classDef desktop fill:#1E293B,stroke:#60A5FA,stroke-width:2.5px,color:#FFFFFF;
+    classDef mobile fill:#451A03,stroke:#F59E0B,stroke-width:2.5px,color:#FFFFFF;
+    classDef web fill:#1E3A8A,stroke:#38BDF8,stroke-width:2.5px,color:#FFFFFF;
+    classDef spec fill:#0F172A,stroke:#94A3B8,stroke-width:1.5px,color:#FFFFFF;
+
+    subgraph Platforms ["Target Platform Runtime Tiers"]
+        Desktop["Desktop Tier<br/>(Linux, macOS, Windows)"]:::desktop
+        Mobile["Mobile Tier<br/>(Android & iOS)"]:::mobile
+        Web["Web Tier<br/>(WebAssembly / Browser)"]:::web
+    end
+
+    subgraph DesktopSpecs ["Desktop Characteristics"]
+        D_Life["Lifecycle: Persistent process<br/>Tray minimization & multi-window"]:::spec
+        D_Input["Input: Precision mouse & hover<br/>Multi-button, physical keyboard, scroll wheel"]:::spec
+        D_Ergo["Ergonomics: 18-24px compact click targets<br/>Arbitrary window resizing"]:::spec
+        D_IO["I/O: Direct filesystem access<br/>Async native file dialogs via rfd"]:::spec
+    end
+
+    subgraph MobileSpecs ["Mobile Characteristics"]
+        M_Life["Lifecycle: Transient background pause<br/>OS process killing on memory pressure"]:::spec
+        M_Input["Input: Capacitive touch & gestures<br/>Zero hover state, multi-touch pinch"]:::spec
+        M_Ergo["Ergonomics: Minimum 48dp touch targets<br/>Safe area insets (notches, home bars)<br/>Dynamic soft keyboard avoidance"]:::spec
+        M_IO["I/O: Sandboxed app storage<br/>Scoped Storage (SAF), 16KB ELF pages"]:::spec
+    end
+
+    subgraph WebSpecs ["WebAssembly Characteristics"]
+        W_Life["Lifecycle: Single-threaded event loop<br/>Driven by requestAnimationFrame"]:::spec
+        W_Input["Input: Browser DOM event capture<br/>Synthetic touch and mouse events"]:::spec
+        W_Ergo["Ergonomics: Responsive fluid layout<br/>Sync canvas with devicePixelRatio"]:::spec
+        W_IO["I/O: Sandboxed IndexedDB & localStorage<br/>Invisible file inputs & FileReader streaming"]:::spec
+    end
+
+    Desktop --> D_Life --> D_Input --> D_Ergo --> D_IO
+    Mobile --> M_Life --> M_Input --> M_Ergo --> M_IO
+    Web --> W_Life --> W_Input --> W_Ergo --> W_IO

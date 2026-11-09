@@ -1,0 +1,25 @@
+flowchart TD
+    classDef hash fill:#3B0764,stroke:#C084FC,stroke-width:2.5px,color:#FFFFFF;
+    classDef mem fill:#1E293B,stroke:#60A5FA,stroke-width:2.5px,color:#FFFFFF;
+    classDef widget fill:#064E3B,stroke:#34D399,stroke-width:2.5px,color:#FFFFFF;
+
+    subgraph CODE ["Source Code Declaration"]
+        Call["ui.text_edit_singleline(&mut my_text)"]:::widget
+    end
+
+    subgraph HASH ["64-Bit Deterministic Id Derivation"]
+        Parent["Parent Scope Id (Window / Container)"]:::hash
+        Salt["Widget Name / Label Salt: 'my_text'"]:::hash
+        Hasher["Hasher: ahash::RandomState (seeded per session)<br/>Id = hash(parent_id, salt)"]:::hash
+    end
+
+    subgraph MEMORY ["ctx.memory(|mem| ...) Data Store"]
+        Map["IdMap&lt;TextEditState&gt;<br/>• cursor: CursorRange { primary: 14, secondary: 14 }<br/>• last_change: Instant"]:::mem
+    end
+
+    Call --> Parent
+    Call --> Salt
+    Parent --> Hasher
+    Salt --> Hasher
+    Hasher -->|"64-bit Id (e.g. 0x9f4a_2b11_08c3_77e1)"| Map
+    Map -->|"Injects cursor state into TextEdit rendering"| Call

@@ -1,0 +1,45 @@
+flowchart LR
+    classDef winit fill:#1E3A8A,stroke:#38BDF8,stroke-width:2.5px,color:#FFFFFF;
+    classDef bridge fill:#312E81,stroke:#818CF8,stroke-width:2.5px,color:#FFFFFF;
+    classDef egui fill:#3B0764,stroke:#C084FC,stroke-width:2.5px,color:#FFFFFF;
+    classDef os fill:#1E293B,stroke:#60A5FA,stroke-width:2.5px,color:#FFFFFF;
+
+    subgraph WINIT_IN ["1. Raw Physical OS Window Events"]
+        Cursor["WindowEvent::CursorMoved<br/>PhysicalPosition&lt;f64&gt; (x, y)"]:::winit
+        Scale["WindowEvent::ScaleFactorChanged<br/>scale_factor: f64 (e.g. 1.5, 2.0)"]:::winit
+        Mouse["WindowEvent::MouseInput<br/>MouseButton, ElementState"]:::winit
+        Keyboard["WindowEvent::KeyboardInput<br/>PhysicalKey, LogicalKey, Modifiers"]:::winit
+        Resize["WindowEvent::Resized<br/>PhysicalSize&lt;u32&gt; (width, height)"]:::winit
+    end
+
+    subgraph BRIDGE ["2. egui-winit (State Adapter)"]
+        ScaleCalc["DPI Coordinate Normalization<br/>logical_pt = physical_px / scale_factor"]:::bridge
+        RawInputAssembler["egui::RawInput Aggregator<br/>• screen_rect: Rect (logical bounds)<br/>• events: Vec&lt;egui::Event&gt;<br/>• modifiers: Modifiers (Ctrl/Alt/Shift)<br/>• time: Option&lt;f64&gt; (monotonic seconds)"]:::bridge
+    end
+
+    subgraph EGUI_CORE ["3. Immediate-Mode Execution"]
+        RunContext["egui::Context::run(raw_input, |ctx| { ... })<br/>Evaluates entire UI tree"]:::egui
+        FullOutput["egui::FullOutput<br/>• shapes: Vec&lt;ClippedShape&gt;<br/>• platform_output: PlatformOutput<br/>• viewport_output: ViewportOutput"]:::egui
+    end
+
+    subgraph WINIT_OUT ["4. Hardware & OS Feedback Pipeline"]
+        CursorSet["window.set_cursor(CursorIcon)<br/>Arrow, Pointer, ResizeHorizontal"]:::os
+        ImeSet["window.set_ime_cursor_area(Rect)<br/>Positions Asian IME composition box"]:::os
+        ClipSet["Clipboard Provider<br/>System arboard / Wayland mime-type"]:::os
+        RepaintPlan["EventLoop Wakeup Scheduling<br/>ControlFlow::WaitUntil(now + repaint_delay)"]:::winit
+    end
+
+    Cursor --> ScaleCalc
+    Scale --> ScaleCalc
+    Resize --> ScaleCalc
+    Mouse --> RawInputAssembler
+    Keyboard --> RawInputAssembler
+    ScaleCalc -->|"Normalized logical coordinates"| RawInputAssembler
+
+    RawInputAssembler -->|"Passes RawInput"| RunContext
+    RunContext -->|"Generates FullOutput"| FullOutput
+
+    FullOutput -->|"platform_output.cursor_icon"| CursorSet
+    FullOutput -->|"platform_output.ime"| ImeSet
+    FullOutput -->|"platform_output.copied_text"| ClipSet
+    FullOutput -->|"viewport_output.repaint_delay"| RepaintPlan

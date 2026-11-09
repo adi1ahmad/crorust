@@ -1,9 +1,9 @@
 use std::collections::BTreeSet;
 
-use crate::workspace::views::About;
 #[cfg(feature = "glow")]
 use crate::AppView;
 use crate::Demo;
+use crate::workspace::views::About;
 use egui::{ScrollArea, Ui};
 
 struct WindowGroup {
@@ -75,6 +75,7 @@ pub struct WindowGroups {
 impl Default for WindowGroups {
     fn default() -> Self {
         let components_demos: Vec<Box<dyn Demo>> = vec![
+            Box::<crate::workspace::views::UniversalFileShowcase>::default(),
             #[cfg(feature = "markdown")]
             Box::<crate::markdown::Editor>::default(),
             #[cfg(feature = "media_viewer")]
@@ -155,7 +156,7 @@ impl WindowGroups {
         ui.separator();
         ui.add_space(4.0);
 
-        ui.label(egui::RichText::new("🔬 Verification & Tests").strong());
+        ui.label(egui::RichText::new("🛠 Engine Diagnostics").strong());
         self.tests.checkboxes(ui, open);
     }
 
@@ -220,13 +221,15 @@ impl Default for WindowManager {
     fn default() -> Self {
         let mut open = BTreeSet::new();
 
-        // Default to Ruxt Framework Manual as the primary window
+        // Default to Ruxt Framework Manual, About crorust.ruxt, and Universal File Showcase
         set_open(&mut open, "📖 Ruxt Framework Manual", true);
+        set_open(&mut open, "About crorust.ruxt", true);
+        set_open(&mut open, "📁 Universal File & Media Showcase", true);
 
         Self {
             groups: Default::default(),
             open,
-            sidebar_open: false,
+            sidebar_open: true,
             has_initialized_layout: false,
         }
     }
@@ -254,6 +257,7 @@ impl WindowManager {
         vec![
             "About crorust.ruxt",
             "📖 Ruxt Framework Manual",
+            "📁 Universal File & Media Showcase",
             "📝 Markdown Editor",
             "🖼 Media Viewer",
             "⏰ Analog Clock",
@@ -271,7 +275,7 @@ impl WindowManager {
             "📏 Sliders",
             "🔘 Toggle Switch",
             "↩ Undo and Redo",
-            "✨ Dancing Strings",
+            "♫ Dancing Strings",
             "🎲 3D Viewport",
             "🌐 Network Client",
             "🎨 Display Calibration",
@@ -318,6 +322,17 @@ impl WindowManager {
         self.groups.on_exit(gl);
     }
 
+    pub fn selected_tutorial_chapter(&self) -> crate::manual::chapter::RuxtTutorialChapter {
+        self.groups.ruxt_manual.selected_chapter
+    }
+
+    pub fn set_selected_tutorial_chapter(
+        &mut self,
+        chapter: crate::manual::chapter::RuxtTutorialChapter,
+    ) {
+        self.groups.ruxt_manual.selected_chapter = chapter;
+    }
+
     /// Adapts the initial workspace configuration to screen dimensions on first frame.
     pub fn ensure_responsive_initialization(&mut self, ctx: &egui::Context) {
         if self.has_initialized_layout {
@@ -325,9 +340,9 @@ impl WindowManager {
         }
         self.has_initialized_layout = true;
 
-        let is_mobile = crate::is_mobile(ctx);
-        if is_mobile {
-            // MOBILE: Strict minimal distraction-free setup
+        let is_compact = crate::is_mobile(ctx) || ctx.content_rect().width() < 480.0;
+        if is_compact {
+            // COMPACT: Strict minimal distraction-free setup
             // 1. Sidebar is closed on entry
             self.sidebar_open = false;
 
@@ -339,6 +354,7 @@ impl WindowManager {
             self.sidebar_open = true;
             set_open(&mut self.open, "📖 Ruxt Framework Manual", true);
             set_open(&mut self.open, "About crorust.ruxt", true);
+            set_open(&mut self.open, "📁 Universal File & Media Showcase", true);
         }
     }
 
@@ -352,13 +368,13 @@ impl WindowManager {
     }
 
     fn desktop_ui(&mut self, ui: &mut egui::Ui) {
-        let is_mobile = crate::is_mobile(ui.ctx());
+        let is_compact = crate::ui::ScreenTier::from_ui(ui).is_compact();
 
         self.groups.windows(ui, &mut self.open);
 
         if let Some(target) = self.groups.ruxt_manual.target_to_launch.take() {
             self.open_and_focus(ui.ctx(), target);
-            if is_mobile {
+            if is_compact {
                 self.sidebar_open = false;
             }
         }
@@ -367,7 +383,23 @@ impl WindowManager {
             let mut collapse = false;
             let central_rect = ui.max_rect();
 
-            let default_width = if is_mobile {
+            if is_compact {
+                let screen_rect = ui.ctx().content_rect();
+                egui::Area::new(egui::Id::new("sidebar_backdrop"))
+                    .fixed_pos(screen_rect.min)
+                    .order(egui::Order::Middle)
+                    .show(ui.ctx(), |ui| {
+                        let (rect, response) =
+                            ui.allocate_exact_size(screen_rect.size(), egui::Sense::click());
+                        ui.painter()
+                            .rect_filled(rect, 0.0, egui::Color32::from_black_alpha(100));
+                        if response.clicked() {
+                            collapse = true;
+                        }
+                    });
+            }
+
+            let default_width = if is_compact {
                 (central_rect.width() * 0.85).clamp(200.0, 320.0)
             } else {
                 260.0
@@ -400,25 +432,30 @@ impl WindowManager {
 
                         ui.horizontal(|ui| {
                             ui.add(
-                                egui::Image::new(egui::include_image!("../../assets/ruxt-logo.svg"))
-                                    .max_height(24.0)
-                                    .tint(ui.visuals().strong_text_color()),
+                                egui::Image::new(egui::include_image!(
+                                    "../../assets/ruxt-logo.svg"
+                                ))
+                                .max_height(24.0)
+                                .tint(ui.visuals().strong_text_color()),
                             );
-                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                if ui
-                                    .small_button("⏵")
-                                    .on_hover_text("Collapse Workspace Sidebar (Ctrl+B)")
-                                    .clicked()
-                                {
-                                    collapse = true;
-                                }
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    if ui
+                                        .small_button("⏵")
+                                        .on_hover_text("Collapse Workspace Sidebar (Ctrl+B)")
+                                        .clicked()
+                                    {
+                                        collapse = true;
+                                    }
 
-                                use egui::special_emojis::GITHUB;
-                                ui.hyperlink_to(
-                                    egui::RichText::new(GITHUB).size(16.0),
-                                    "https://github.com/adi1ahmad/crorust",
-                                );
-                            });
+                                    use egui::special_emojis::GITHUB;
+                                    ui.hyperlink_to(
+                                        egui::RichText::new(GITHUB).size(16.0),
+                                        "https://github.com/adi1ahmad/crorust",
+                                    );
+                                },
+                            );
                         });
 
                         let prev_open_count = self.open.len();
@@ -431,8 +468,8 @@ impl WindowManager {
 
                         self.window_list_ui(ui);
 
-                        // On mobile: auto-close drawer once a window has been opened
-                        if is_mobile && self.open.len() > prev_open_count {
+                        // On compact screens: auto-close drawer once a window has been opened
+                        if is_compact && self.open.len() > prev_open_count {
                             collapse = true;
                         }
                     });

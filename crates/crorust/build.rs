@@ -91,7 +91,11 @@ fn pack_directory_deterministic<W: std::io::Write>(
             }
             pack_directory_deterministic(base_dir, &path, tar)?;
         } else {
-            if file_name_str == "flake.lock" || file_name_str.ends_with(".part") {
+            if file_name_str == "flake.lock"
+                || file_name_str.ends_with(".part")
+                || file_name_str.ends_with(".log")
+                || file_name_str == "crorust.log"
+            {
                 continue;
             }
 

@@ -3,7 +3,6 @@ use egui::{Color32, Frame, Id, Ui, Window, vec2};
 #[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct DragAndDropDemo {
-
     columns: Vec<Vec<String>>,
 }
 
@@ -81,21 +80,17 @@ impl crate::View for DragAndDropDemo {
 
                             let stroke = egui::Stroke::new(1.0, Color32::WHITE);
                             let insert_row_idx = if *hovered_payload == item_location {
-
                                 ui.painter().hline(rect.x_range(), rect.center().y, stroke);
                                 row_idx
                             } else if pointer.y < rect.center().y {
-
                                 ui.painter().hline(rect.x_range(), rect.top(), stroke);
                                 row_idx
                             } else {
-
                                 ui.painter().hline(rect.x_range(), rect.bottom(), stroke);
                                 row_idx + 1
                             };
 
                             if let Some(dragged_payload) = response.dnd_release_payload() {
-
                                 from = Some(dragged_payload);
                                 to = Some(Location {
                                     col: col_idx,
@@ -107,7 +102,6 @@ impl crate::View for DragAndDropDemo {
                 });
 
                 if let Some(dragged_payload) = dropped_payload {
-
                     from = Some(dragged_payload);
                     to = Some(Location {
                         col: col_idx,
@@ -119,7 +113,6 @@ impl crate::View for DragAndDropDemo {
 
         if let (Some(from), Some(mut to)) = (from, to) {
             if from.col == to.col {
-
                 to.row -= (from.row < to.row) as usize;
             }
 

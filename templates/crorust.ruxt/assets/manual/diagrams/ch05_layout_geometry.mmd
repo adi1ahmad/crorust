@@ -1,0 +1,39 @@
+flowchart LR
+    classDef layout fill:#1E3A8A,stroke:#38BDF8,stroke-width:2.5px,color:#FFFFFF;
+    classDef alloc fill:#3B0764,stroke:#C084FC,stroke-width:2.5px,color:#FFFFFF;
+    classDef resp fill:#064E3B,stroke:#34D399,stroke-width:2.5px,color:#FFFFFF;
+    classDef painter fill:#451A03,stroke:#F59E0B,stroke-width:2.5px,color:#FFFFFF;
+
+    subgraph LAYOUT_STATE ["1. egui::Ui Layout Cursor & Bounds"]
+        MaxRect["max_rect: Rect<br/>Total bounding limit of parent container"]:::layout
+        Cursor["layout_cursor: Pos2<br/>Current insertion point (x, y)"]:::layout
+        Dir["Layout Direction<br/>TopDown, LeftToRight, RightToLeft, BottomUp"]:::layout
+        Spacing["Style Spacing<br/>item_spacing: Vec2, window_padding: Margin"]:::layout
+    end
+
+    subgraph ALLOCATION ["2. Widget Allocation Pipeline"]
+        AllocFn["ui.allocate_exact_size(desired_size, Sense)<br/>1. Computes widget rect at cursor<br/>2. Advances layout_cursor by size + spacing<br/>3. Expands min_rect bounding volume"]:::alloc
+        AssignedRect["Assigned Rect<br/>[min: (x1, y1), max: (x2, y2)]"]:::alloc
+    end
+
+    subgraph INTERACTION ["3. Hit-Testing & Response"]
+        SenseMask["Sense Bitmask<br/>Sense::hover() | Sense::click() | Sense::drag()"]:::resp
+        Response["egui::Response<br/>• hovered: bool (pointer within Rect)<br/>• clicked: bool (mouse released over Rect)<br/>• dragged: bool (mouse moved while held down)<br/>• rect: Rect (bounding box)"]:::resp
+    end
+
+    subgraph PAINTER ["4. Scissor Clipping & Drawing"]
+        ClipRect["Current Scissor clip_rect<br/>Intersection of all parent ScrollArea/Window bounds"]:::painter
+        DrawCmd["ui.painter().with_clip_rect(clip_rect)<br/>Appends Shape::Rect / Shape::Text with scissor limit"]:::painter
+    end
+
+    MaxRect --> AllocFn
+    Cursor --> AllocFn
+    Dir --> AllocFn
+    Spacing --> AllocFn
+
+    AllocFn --> AssignedRect
+    AllocFn --> SenseMask
+    SenseMask --> Response
+
+    AssignedRect --> DrawCmd
+    ClipRect --> DrawCmd

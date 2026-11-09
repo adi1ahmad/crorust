@@ -97,7 +97,6 @@ impl crate::View for Modals {
                             *save_modal_open = true;
                         }
                         if ui.button("Cancel").clicked() {
-
                             ui.close();
                         }
                     },

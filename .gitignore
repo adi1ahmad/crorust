@@ -20,6 +20,8 @@ embedded.mobileprovision
 # Local CI diagnostic logs and downloaded run artifacts
 /.ci-logs/
 plans/
+*.log
+crorust.log
 
 # CI/local install output (cargo install --root . / Tier 2 staging)
 /bin/

@@ -84,11 +84,7 @@ impl crate::View for WidgetShowcase {
         }
 
         let is_compact = crate::is_mobile(ui.ctx()) || ui.available_width() < 400.0;
-        let grid_spacing = if is_compact {
-            [16.0, 4.0]
-        } else {
-            [40.0, 4.0]
-        };
+        let grid_spacing = if is_compact { [16.0, 4.0] } else { [40.0, 4.0] };
 
         ui.scope_builder(ui_builder, |ui| {
             ui.multiply_opacity(self.opacity);

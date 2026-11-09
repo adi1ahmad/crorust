@@ -394,6 +394,32 @@ impl PlatformPackager for AndroidPackager {
                     )?;
                 }
 
+                // Pre-flight GameActivity JNI ABI parity check:
+                // Ensure compiled native .so matches bytecode in DEX/AARs before packaging.
+                // Scan DEX files once (supporting multi-dex) to resolve GameActivity bytecode variant:
+                let mut detected_dex_abi = None;
+                for dex_path in &dex_paths {
+                    if let Ok(Some(abi)) =
+                        crate::android::detect_dex_file_game_activity_abi(dex_path)
+                    {
+                        detected_dex_abi = Some(abi);
+                        break;
+                    }
+                }
+
+                let explicit_ga_ver = env
+                    .manifest_config()
+                    .android_platform_config()
+                    .explicit_game_activity_version();
+
+                for (_target_abi, library_file) in &libraries {
+                    crate::android::validate_game_activity_abi_with_resolved(
+                        library_file,
+                        detected_dex_abi,
+                        explicit_ga_ver,
+                    )?;
+                }
+
                 if env.build_target().package_format() == PackageFormat::Aab {
                     let mut aab = Aab::new(out.clone(), manifest)?;
                     aab.add_bundle_config()?;

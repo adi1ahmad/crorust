@@ -150,7 +150,6 @@ fn response_summary(response: &egui::Response, show_hovers: bool) -> String {
         egui::PointerButton::Extra2,
     ] {
         let button_suffix = if button == egui::PointerButton::Primary {
-
             String::default()
         } else {
             format!(" by {button:?} button")

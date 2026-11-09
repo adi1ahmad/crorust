@@ -68,57 +68,8 @@ impl CrorustChapter {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-pub enum RuxtChapter {
-    #[default]
-    GettingStarted,
-    LifecycleAndWinit,
-    GraphicsAndShaders,
-    UiAndLayout,
-    ThemingAndStyling,
-    WidgetCatalog,
-    VerificationAndTests,
-}
-
-impl RuxtChapter {
-    pub const ALL: &'static [Self] = &[
-        Self::GettingStarted,
-        Self::LifecycleAndWinit,
-        Self::GraphicsAndShaders,
-        Self::UiAndLayout,
-        Self::ThemingAndStyling,
-        Self::WidgetCatalog,
-        Self::VerificationAndTests,
-    ];
-
-    pub fn title(&self) -> &'static str {
-        match self {
-            Self::GettingStarted => "Getting Started with ruxt",
-            Self::LifecycleAndWinit => "winit + egui App Lifecycle",
-            Self::GraphicsAndShaders => "Graphics: wgpu, glow & glam",
-            Self::UiAndLayout => "Immediate-Mode UI & Layout",
-            Self::ThemingAndStyling => "Theming & Design Tokens",
-            Self::WidgetCatalog => "Widget Catalog & Live Samples",
-            Self::VerificationAndTests => "Testing with egui_kittest",
-        }
-    }
-
-    pub fn slug(&self) -> &'static str {
-        match self {
-            Self::GettingStarted => "getting-started",
-            Self::LifecycleAndWinit => "lifecycle",
-            Self::GraphicsAndShaders => "graphics",
-            Self::UiAndLayout => "ui-layout",
-            Self::ThemingAndStyling => "theming",
-            Self::WidgetCatalog => "widgets",
-            Self::VerificationAndTests => "testing",
-        }
-    }
-
-    pub fn from_slug(slug: &str) -> Option<Self> {
-        Self::ALL.iter().copied().find(|c| c.slug() == slug)
-    }
-}
+pub use crate::manual::chapter::RuxtTutorialChapter;
+pub type RuxtChapter = RuxtTutorialChapter;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct NavigationState {
@@ -140,19 +91,33 @@ impl NavigationState {
     pub fn navigate_to_crorust(&mut self, chapter: CrorustChapter) {
         self.mode = AppMode::Home;
         self.crorust_chapter = chapter;
+        self.pending_hash_sync = true;
         self.sync_url_hash();
     }
 
     pub fn navigate_to_ruxt(&mut self, chapter: RuxtChapter) {
         self.mode = AppMode::Workspace;
         self.ruxt_chapter = chapter;
+        self.pending_hash_sync = true;
         self.sync_url_hash();
     }
 
     pub fn current_hash(&self) -> String {
         match self.mode {
-            AppMode::Home => "#/".to_owned(),
-            AppMode::Workspace => "#/workspace".to_owned(),
+            AppMode::Home => {
+                if self.crorust_chapter == CrorustChapter::Overview {
+                    "#/".to_owned()
+                } else {
+                    format!("#/docs/crorust/{}", self.crorust_chapter.slug())
+                }
+            }
+            AppMode::Workspace => {
+                if self.ruxt_chapter == RuxtTutorialChapter::Windowing {
+                    "#/workspace".to_owned()
+                } else {
+                    format!("#/docs/ruxt/{}", self.ruxt_chapter.slug())
+                }
+            }
         }
     }
 
@@ -161,18 +126,31 @@ impl NavigationState {
         let segments: Vec<&str> = clean.split('/').filter(|s| !s.is_empty()).collect();
 
         match segments.as_slice() {
-            [] => self.mode = AppMode::Home,
+            [] => {
+                self.mode = AppMode::Home;
+                self.crorust_chapter = CrorustChapter::Overview;
+                self.pending_hash_sync = true;
+            }
             ["workspace", ..] | ["showcase", ..] => self.mode = AppMode::Workspace,
+            ["docs", "ruxt", slug] => {
+                self.mode = AppMode::Workspace;
+                if let Some(ch) = RuxtTutorialChapter::from_slug(slug) {
+                    self.ruxt_chapter = ch;
+                    self.pending_hash_sync = true;
+                }
+            }
             ["docs", "ruxt", ..] => self.mode = AppMode::Workspace,
             ["docs", "crorust", slug] => {
                 self.mode = AppMode::Home;
                 if let Some(ch) = CrorustChapter::from_slug(slug) {
                     self.crorust_chapter = ch;
+                    self.pending_hash_sync = true;
                 }
             }
             ["docs", "crorust"] => {
                 self.mode = AppMode::Home;
                 self.crorust_chapter = CrorustChapter::Overview;
+                self.pending_hash_sync = true;
             }
             _ => {
                 self.mode = AppMode::Home;
@@ -220,16 +198,18 @@ mod tests {
         nav.apply_hash("#/docs/crorust/crates");
         assert_eq!(nav.mode, AppMode::Home);
         assert_eq!(nav.crorust_chapter, CrorustChapter::Crates);
-        assert_eq!(nav.current_hash(), "#/");
+        assert_eq!(nav.current_hash(), "#/docs/crorust/crates");
 
-        nav.apply_hash("#/docs/ruxt/graphics");
+        nav.apply_hash("#/docs/ruxt/gpu-pipeline");
         assert_eq!(nav.mode, AppMode::Workspace);
-        assert_eq!(nav.current_hash(), "#/workspace");
+        assert_eq!(nav.ruxt_chapter, RuxtTutorialChapter::GpuPipeline);
+        assert_eq!(nav.current_hash(), "#/docs/ruxt/gpu-pipeline");
 
         nav.apply_hash("#/showcase");
         assert_eq!(nav.mode, AppMode::Workspace);
 
         nav.apply_hash("#/");
         assert_eq!(nav.mode, AppMode::Home);
+        assert_eq!(nav.current_hash(), "#/");
     }
 }

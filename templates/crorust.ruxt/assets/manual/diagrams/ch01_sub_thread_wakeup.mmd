@@ -1,0 +1,27 @@
+flowchart TD
+    classDef worker fill:#451A03,stroke:#F59E0B,stroke-width:2.5px,color:#FFFFFF;
+    classDef kernel fill:#4C0519,stroke:#FB7185,stroke-width:2.5px,color:#FFFFFF;
+    classDef ui fill:#1E3A8A,stroke:#38BDF8,stroke-width:2.5px,color:#FFFFFF;
+
+    subgraph BG ["Tokio Thread Pool"]
+        Thread["Tokio Worker Thread<br/>Completes async network download"]:::worker
+        Proxy["EventLoopProxy::send_event(UserEvent::DataLoaded(bytes))"]:::worker
+    end
+
+    subgraph OS_INTERNALS ["Operating System Kernel Primitives"]
+        Pipe["Linux: eventfd_write(fd, 1)<br/>Windows: PostMessageW(HWND, WM_USER, ...)<br/>macOS: CFRunLoopSourceSignal()"]:::kernel
+        Descriptor["OS Kernel Wakeup List<br/>(epoll / kqueue / IOCP)"]:::kernel
+    end
+
+    subgraph MAIN ["Main UI Thread (Thread 0)"]
+        Sleep["EventLoop::run() sleeping at 0% CPU in epoll_wait()"]:::ui
+        Awaken["Kernel wakes thread via file descriptor readiness"]:::ui
+        Process["ApplicationHandler::user_event() triggered with UserEvent payload"]:::ui
+    end
+
+    Thread --> Proxy
+    Proxy -->|"System Call"| Pipe
+    Pipe --> Descriptor
+    Descriptor -.->|"Hardware CPU interrupt"| Sleep
+    Sleep --> Awaken
+    Awaken --> Process

@@ -15,3 +15,6 @@ tests/snapshots/*.old.png
 **/*.snap.new
 **/*.pending-snap
 
+# Logs and runtime traces
+*.log
+crorust.log

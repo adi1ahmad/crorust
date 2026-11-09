@@ -43,7 +43,6 @@ impl crate::View for ClipboardTest {
             .inner;
 
         if !cfg!(target_arch = "wasm32") {
-
             ui.horizontal(|ui| {
                 for (name, cmd) in [
                     ("Copy", egui::ViewportCommand::RequestCopy),
@@ -51,7 +50,6 @@ impl crate::View for ClipboardTest {
                     ("Paste", egui::ViewportCommand::RequestPaste),
                 ] {
                     if ui.button(name).clicked() {
-
                         ui.send_viewport_cmd(cmd);
 
                         text_edit_response.request_focus();

@@ -1,0 +1,38 @@
+flowchart TD
+    classDef input fill:#1E3A8A,stroke:#38BDF8,stroke-width:2.5px,color:#FFFFFF;
+    classDef exec fill:#3B0764,stroke:#C084FC,stroke-width:2.5px,color:#FFFFFF;
+    classDef store fill:#1E293B,stroke:#60A5FA,stroke-width:2.5px,color:#FFFFFF;
+    classDef gc fill:#4C0519,stroke:#FB7185,stroke-width:2.5px,color:#FFFFFF;
+    classDef output fill:#064E3B,stroke:#34D399,stroke-width:2.5px,color:#FFFFFF;
+
+    subgraph PHASE1 ["Phase 1: Input Ingestion & Clock Sync"]
+        Raw["egui::RawInput<br/>(Pointer positions, keyboard inputs, delta_time)"]:::input
+    end
+
+    subgraph PHASE2 ["Phase 2: Immediate-Mode Pulse: f(State) -> UI"]
+        Update["app.update(&ctx, &mut frame)<br/>Pure function recreating ephemeral widgets each frame"]:::exec
+
+        subgraph STATE_CACHE ["Central egui::Memory Key-Value Store"]
+            IdGen["Deterministic 64-bit egui::Id Hash<br/>hash(parent_id, widget_label)"]:::store
+            DataStore["IdMap&lt;Arc&lt;Any&gt;&gt; Persistent Store<br/>• Text cursor index & selection range<br/>• ScrollArea offset vector [x, y]<br/>• CollapsingHeader open/closed boolean<br/>• Spring/Eased animation velocities"]:::store
+            GenTracker["Generation Counter Tracker<br/>last_frame_used: u64"]:::store
+        end
+
+        GC["Automated Garbage Collector<br/>Evicts entries if (current_frame - last_frame_used) &gt; 1"]:::gc
+    end
+
+    subgraph PHASE3 ["Phase 3: Frame Artifacts Emitted"]
+        Shapes["Vec&lt;Shape&gt;<br/>Unclipped Vector Geometry Commands"]:::output
+        Platform["PlatformOutput<br/>OS Cursor, URL open requests, Clipboard string"]:::output
+        Sleep["RepaintDelay<br/>Zero CPU Sleep until user input OR timer expires"]:::output
+    end
+
+    Raw --> Update
+    Update -->|"1. Solicits Widget ID"| IdGen
+    IdGen -->|"2. Queries retained state"| DataStore
+    DataStore -->|"3. Supplies cursor/scroll values"| Update
+    Update -->|"4. Bumps frame generation"| GenTracker
+    GenTracker -->|"5. Sweeps stale orphaned IDs"| GC
+    Update --> Shapes
+    Update --> Platform
+    Update --> Sleep

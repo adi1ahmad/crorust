@@ -15,7 +15,6 @@ impl Default for FrameHistory {
 }
 
 impl FrameHistory {
-
     pub fn on_new_frame(&mut self, now: f64, previous_frame_time: Option<f32>) {
         let previous_frame_time = previous_frame_time.unwrap_or_default();
         if let Some(latest) = self.frame_times.latest_mut() {

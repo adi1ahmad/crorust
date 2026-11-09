@@ -3,7 +3,6 @@ use egui::{Color32, Frame, Pos2, Rect, Sense, Stroke, Ui, Window, emath, vec2};
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct Painting {
-
     lines: Vec<Vec<Pos2>>,
     stroke: Stroke,
 }

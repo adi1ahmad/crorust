@@ -1,0 +1,39 @@
+sequenceDiagram
+    autonumber
+    actor User as Physical User
+    participant HW as Hardware Mouse / Touch Sensor
+    participant Kernel as OS Kernel Driver
+    participant Winit as winit::EventLoop
+    participant Bridge as egui-winit (State)
+    participant Ctx as egui::Context
+    participant App as Ruxt App (update)
+    participant Epaint as epaint Tessellator
+    participant WGPU as egui-wgpu Backend
+    participant GPU as Hardware GPU & Display
+
+    Note over User, HW: PHASE 1: HARDWARE INTERRUPT
+    User->>HW: Moves mouse 5mm across pad
+    HW->>Kernel: Hardware interrupt & USB report packet (dx, dy)
+    Kernel->>Winit: Native Window Event (e.g. WM_MOUSEMOVE / wl_pointer.motion)
+
+    Note over Winit, Bridge: PHASE 2: DPI BRIDGE & INGESTION
+    Winit->>Bridge: WindowEvent::CursorMoved { position: PhysicalPosition(3840, 2160) }
+    Bridge->>Bridge: Transforms physical px to logical points (pos / scale_factor 2.0 = 1920, 1080)
+    Bridge->>Ctx: egui::RawInput { events: [PointerMoved(1920, 1080)], time: 14.28 }
+
+    Note over Ctx, App: PHASE 3: IMMEDIATE-MODE FRAME PULSE
+    Ctx->>App: Invokes app.update(&ctx, &mut frame)
+    App->>App: ui.button("Launch Task") allocates Rect, queries hover state
+    App->>Ctx: Emits vector draw commands: Shapes (Rounded Rect, Text Galley)
+    App-->>Ctx: app.update() completes
+
+    Note over Ctx, Epaint: PHASE 4: TESSELLATION & AA FEATHERING
+    Ctx->>Epaint: tessellate(shapes, pixels_per_point)
+    Epaint->>Epaint: Extrudes geometry, computes alpha-feathered anti-aliased borders
+    Epaint->>WGPU: Emits Vec<ClippedPrimitive> (VBO vertices, IBO indices, Scissor rects)
+
+    Note over WGPU, GPU: PHASE 5: GPU RENDER PASS & PRESENTATION
+    WGPU->>WGPU: Uploads VBO/IBO to GPU staging buffers, updates projection uniform
+    WGPU->>GPU: Encodes RenderPass commands: set_pipeline, set_scissor, draw_indexed
+    GPU->>GPU: Rasterizer & Pixel Shader execute in parallel
+    GPU->>Display: Swapchain buffer flip & OLED photon emission (V-Sync)

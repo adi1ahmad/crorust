@@ -4,8 +4,8 @@ use accesskit::ActionRequest;
 use accesskit_consumer::{Node, NodeId, Tree, TreeChangeHandler};
 
 use egui::{
-    Context, Event, Frame, FullOutput, Id, Key, KeyboardShortcut,
-    Modifiers, Panel, RawInput, ScrollArea, Ui, collapsing_header::CollapsingState,
+    Context, Event, Frame, FullOutput, Id, Key, KeyboardShortcut, Modifiers, Panel, RawInput,
+    ScrollArea, Ui, collapsing_header::CollapsingState,
 };
 
 #[derive(Default, Debug)]

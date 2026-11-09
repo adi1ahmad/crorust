@@ -2,6 +2,14 @@ use egui::{
     Key, KeyboardShortcut, Modifiers, ScrollArea, TextBuffer, TextEdit, Ui, text::CCursorRange,
 };
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum MobileEditorTab {
+    #[default]
+    Source,
+    Preview,
+}
+
 #[derive(Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
@@ -9,6 +17,7 @@ pub struct Editor {
     code: String,
     highlight_editor: bool,
     show_rendered: bool,
+    mobile_tab: MobileEditorTab,
 
     #[cfg_attr(feature = "serde", serde(skip))]
     highlighter: super::highlighter::MemoizedEasymarkHighlighter,
@@ -18,8 +27,17 @@ pub type EasyMarkEditor = Editor;
 
 impl PartialEq for Editor {
     fn eq(&self, other: &Self) -> bool {
-        (&self.code, self.highlight_editor, self.show_rendered)
-            == (&other.code, other.highlight_editor, other.show_rendered)
+        (
+            &self.code,
+            self.highlight_editor,
+            self.show_rendered,
+            self.mobile_tab,
+        ) == (
+            &other.code,
+            other.highlight_editor,
+            other.show_rendered,
+            other.mobile_tab,
+        )
     }
 }
 
@@ -29,6 +47,7 @@ impl Default for Editor {
             code: DEFAULT_CODE.trim().to_owned(),
             highlight_editor: true,
             show_rendered: true,
+            mobile_tab: MobileEditorTab::default(),
             highlighter: Default::default(),
         }
     }
@@ -40,9 +59,17 @@ impl crate::Demo for Editor {
     }
 
     fn show(&mut self, ui: &mut egui::Ui, open: &mut bool) {
+        let is_compact = crate::ui::ScreenTier::from_ui(ui).is_compact();
+        let default_size = if is_compact {
+            let screen = ui.ctx().content_rect();
+            [screen.width() - 24.0, (screen.height() - 60.0).max(300.0)]
+        } else {
+            [720.0, 520.0]
+        };
+
         egui::Window::new(self.name())
             .open(open)
-            .default_size([720.0, 520.0])
+            .default_size(default_size)
             .vscroll(false)
             .resizable(true)
             .constrain_to(ui.available_rect_before_wrap())
@@ -71,12 +98,33 @@ impl Editor {
             let _response = ui.button("Hotkeys").on_hover_ui(nested_hotkeys_ui);
             ui.checkbox(&mut self.show_rendered, "Show rendered");
             ui.checkbox(&mut self.highlight_editor, "Highlight editor");
-            ui.menu_button("📖 Load Ruxt Guide", |ui| {
-                for (chapter, label, _) in crate::markdown::ruxt_docs::RuxtDocChapter::all() {
-                    if ui.button(*label).clicked() {
-                        self.code = chapter.markdown_content().trim().to_owned();
-                        ui.close();
-                    }
+            ui.menu_button("📄 Load Template", |ui| {
+                if ui.button("📋 Architecture Decision Record").clicked() {
+                    self.code = "# ADR 001: Pure-Rust Cross-Target Packaging\n\n\
+## Status\nAccepted\n\n\
+## Context\nTraditional toolchains require 30GB+ of platform IDEs.\n\n\
+## Decision\nWe compile and sign native artifacts using in-tree member crates.\n\n\
+## Consequences\nZero external toolchain dependency; identical commands on all hosts."
+                        .to_owned();
+                    ui.close();
+                }
+                if ui.button("📦 Project Release Notes").clicked() {
+                    self.code = "# Release v0.1.0\n\n\
+## Highlights\n\
+- Initial release of *ruxt* cross-platform template\n\
+- Full support for Android, iOS, macOS, Windows, Linux, and Web\n\
+- Built-in living manual and widget catalog"
+                        .to_owned();
+                    ui.close();
+                }
+                if ui.button("📖 Quickstart Guide").clicked() {
+                    self.code = "# Getting Started with ruxt\n\n\
+1. Run `crorust build -p android` for Android APK\n\
+2. Run `crorust build -p windows` for Windows MSIX\n\
+3. Run `crorust build -p linux` for Linux AppImage\n\
+4. Run `crorust run --device <id>` to launch directly on hardware."
+                        .to_owned();
+                    ui.close();
                 }
             });
             if ui.button("Reset").clicked() {
@@ -86,7 +134,27 @@ impl Editor {
         });
         ui.separator();
 
-        if self.show_rendered {
+        let is_compact = crate::ui::ScreenTier::from_ui(ui).is_compact();
+
+        if is_compact && self.show_rendered {
+            ui.horizontal(|ui| {
+                ui.selectable_value(&mut self.mobile_tab, MobileEditorTab::Source, "✏ Source");
+                ui.selectable_value(&mut self.mobile_tab, MobileEditorTab::Preview, "👁 Preview");
+            });
+            ui.separator();
+            match self.mobile_tab {
+                MobileEditorTab::Source => {
+                    ScrollArea::vertical()
+                        .id_salt("source")
+                        .show(ui, |ui| self.editor_ui(ui));
+                }
+                MobileEditorTab::Preview => {
+                    ScrollArea::vertical().id_salt("rendered").show(ui, |ui| {
+                        super::viewer::easy_mark(ui, &self.code);
+                    });
+                }
+            }
+        } else if self.show_rendered {
             ui.columns(2, |columns| {
                 ScrollArea::vertical()
                     .id_salt("source")
@@ -179,7 +247,6 @@ fn shortcuts(ui: &Ui, code: &mut dyn TextBuffer, ccursor_range: &mut CCursorRang
     let mut any_change = false;
 
     if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_INDENT)) {
-
         any_change = true;
         let [primary, _secondary] = ccursor_range.sorted_cursors();
 

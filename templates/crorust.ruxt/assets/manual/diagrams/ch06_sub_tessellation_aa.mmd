@@ -1,0 +1,22 @@
+flowchart LR
+    classDef geom fill:#3B0764,stroke:#C084FC,stroke-width:2.5px,color:#FFFFFF;
+    classDef mesh fill:#042F2E,stroke:#2DD4BF,stroke-width:2.5px,color:#FFFFFF;
+    classDef pixel fill:#1E293B,stroke:#60A5FA,stroke-width:2.5px,color:#FFFFFF;
+
+    subgraph VECTOR ["Vector Primitive"]
+        Poly["Convex Shape Boundary (e.g. Rounded Rectangle)"]:::geom
+    end
+
+    subgraph EPPAINT ["epaint Edge Feathering Extrusion"]
+        Inner["Inner Mesh Polygon<br/>Color: RGBA (Full Opacity, Alpha = 255)"]:::mesh
+        Fringe["Extruded Fringe Boundary (1.0 Physical Pixel Wide)<br/>Outer Vertices: Alpha = 0<br/>Inner Vertices: Alpha = 255"]:::mesh
+    end
+
+    subgraph GPU_OUT ["Rasterized Output"]
+        Crisp["Smooth, Anti-Aliased Edge<br/>Hardware linear interpolator fades alpha to 0<br/>Crisp at zero performance cost without 4x/8x MSAA overhead"]:::pixel
+    end
+
+    Poly --> Inner
+    Poly --> Fringe
+    Inner --> Crisp
+    Fringe --> Crisp

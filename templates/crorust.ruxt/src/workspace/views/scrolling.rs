@@ -182,7 +182,6 @@ fn huge_content_lines(ui: &mut egui::Ui) {
 }
 
 fn huge_content_painter(ui: &mut egui::Ui) {
-
     ui.label("A lot of rows, but only the visible ones are painted, so performance is still good:");
     ui.add_space(4.0);
 

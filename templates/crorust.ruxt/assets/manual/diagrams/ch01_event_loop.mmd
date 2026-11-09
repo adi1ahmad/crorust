@@ -1,0 +1,44 @@
+flowchart TD
+    classDef os fill:#1E293B,stroke:#60A5FA,stroke-width:2.5px,color:#FFFFFF;
+    classDef winit fill:#1E3A8A,stroke:#38BDF8,stroke-width:2.5px,color:#FFFFFF;
+    classDef worker fill:#451A03,stroke:#F59E0B,stroke-width:2.5px,color:#FFFFFF;
+    classDef signal fill:#4C0519,stroke:#FB7185,stroke-width:2.5px,color:#FFFFFF;
+
+    subgraph OS_LAYER ["Operating System Native RunLoops & Queues"]
+        Win32["Windows: GetMessageW() / DispatchMessageW()<br/>HWND Message Queue"]:::os
+        macOS["macOS: CFRunLoopRunInMode()<br/>Cocoa NSRunLoop / NSWindow"]:::os
+        Linux["Linux: wl_event_queue_dispatch()<br/>Wayland / X11 xcb_poll_for_event()"]:::os
+        Mobile["Android: ALooper_pollOnce()<br/>iOS: UIApplicationMain()"]:::os
+        Web["Web: Emscripten / wasm32<br/>requestAnimationFrame / EventTarget"]:::os
+    end
+
+    subgraph MAIN_THREAD ["Main UI Thread (Thread 0)"]
+        EventLoop["winit::event_loop::EventLoop&lt;UserEvent&gt;<br/>Blocking on OS Interrupt Descriptor"]:::winit
+        AppHandler["ApplicationHandler Trait Implementation<br/>• resumed(&mut event_loop)<br/>• window_event(&mut window, id, event)<br/>• user_event(&mut event_loop, event)<br/>• about_to_wait(&mut event_loop)"]:::winit
+        EframeHarness["eframe::AppRunner<br/>Runs Frame Cycle & Coordinate Bridge"]:::winit
+    end
+
+    subgraph BACKGROUND_WORKERS ["Tokio Runtimes & Background Worker Threads"]
+        TokioTask["Async Tokio Worker<br/>(Network HTTP / WebSockets)"]:::worker
+        FileLoader["Heavy I/O Worker<br/>(Image Decoding / Disk DB)"]:::worker
+        Proxy["winit::event_loop::EventLoopProxy&lt;UserEvent&gt;<br/>Thread-Safe (Send + Sync) Multi-Producer Channel"]:::worker
+    end
+
+    subgraph OS_WAKE ["Kernel Wakeup Mechanism"]
+        KernelPipe["OS Wakeup Primitive<br/>(eventfd / PostMessageW / Pipe / CFRunLoopSource)"]:::signal
+    end
+
+    Win32 -->|"Native WM_* messages"| EventLoop
+    macOS -->|"NSEvent stream"| EventLoop
+    Linux -->|"Wayland/X11 sockets"| EventLoop
+    Mobile -->|"Native input queues"| EventLoop
+    Web -->|"DOM event callbacks"| EventLoop
+
+    EventLoop -->|"Dispatches WindowEvent"| AppHandler
+    AppHandler -->|"Drives egui pulse"| EframeHarness
+
+    TokioTask -->|"EventLoopProxy::send_event(UserEvent)"| Proxy
+    FileLoader -->|"EventLoopProxy::send_event(UserEvent)"| Proxy
+
+    Proxy -->|"Writes 8-byte counter / OS signal"| KernelPipe
+    KernelPipe -.->|"Interrupts blocking poll() & wakes UI thread"| EventLoop

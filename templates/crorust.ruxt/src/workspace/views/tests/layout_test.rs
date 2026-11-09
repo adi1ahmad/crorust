@@ -3,7 +3,6 @@ use egui::{Align, Direction, Layout, Resize, Slider, Ui, vec2};
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct LayoutTest {
-
     layout: LayoutSettings,
 
     wrap_column_width: f32,
@@ -24,7 +23,6 @@ impl Default for LayoutTest {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct LayoutSettings {
-
     main_dir: Direction,
     main_wrap: bool,
     cross_align: Align,

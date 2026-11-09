@@ -2,7 +2,6 @@ use super::frame_history::FrameHistory;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 enum RunMode {
-
     #[default]
     Reactive,
 
@@ -21,12 +20,18 @@ pub struct SettingsPanel {
     #[cfg_attr(feature = "serde", serde(skip))]
     frame_history: FrameHistory,
 
+    #[cfg_attr(feature = "serde", serde(skip))]
+    cached_fps_str: String,
+
+    #[cfg_attr(feature = "serde", serde(skip))]
+    last_fps_val: f32,
+
     egui_windows: EguiWindows,
 }
 
 impl SettingsPanel {
     pub fn end_of_top_bar(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        let is_compact = crate::is_mobile(ui.ctx()) || ui.available_width() < 420.0;
+        let is_compact = super::ScreenTier::from_ui(ui).is_compact();
         let label = if is_compact { "⚙" } else { "⚙ Settings" };
         ui.toggle_value(&mut self.open, label)
             .on_hover_text("Configure display, rendering, and diagnostic preferences");
@@ -36,6 +41,14 @@ impl SettingsPanel {
         self.frame_history.fps()
     }
 
+    pub fn fps_display_str(&self) -> &str {
+        if self.cached_fps_str.is_empty() {
+            "60 FPS"
+        } else {
+            &self.cached_fps_str
+        }
+    }
+
     pub fn mean_frame_time(&self) -> f32 {
         self.frame_history.mean_frame_time()
     }
@@ -43,6 +56,12 @@ impl SettingsPanel {
     pub fn update(&mut self, ctx: &egui::Context, frame: &eframe::Frame) {
         self.frame_history
             .on_new_frame(ctx.input(|i| i.time), frame.info().cpu_usage);
+
+        let current_fps = self.frame_history.fps();
+        if (current_fps - self.last_fps_val).abs() >= 0.5 || self.cached_fps_str.is_empty() {
+            self.last_fps_val = current_fps;
+            self.cached_fps_str = format!("{current_fps:.0} FPS");
+        }
 
         if self.run_mode == RunMode::Continuous {
             ctx.request_repaint();
@@ -56,60 +75,124 @@ impl SettingsPanel {
     pub fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         self.update(ui.ctx(), frame);
 
-        let mut open = self.open;
-        let mut close = false;
+        let is_compact = super::ScreenTier::from_ui(ui).is_compact();
 
-        egui::Panel::left("settings_side_panel")
-            .resizable(true)
-            .size_range(180.0..=450.0)
-            .default_size(240.0)
-            .show_collapsible(ui, &mut open, |ui| {
-                ui.horizontal(|ui| {
-                    ui.heading("Settings");
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui
-                            .small_button("⏴")
-                            .on_hover_text("Collapse Settings Panel")
-                            .clicked()
+        if is_compact {
+            if self.open {
+                let screen_rect = ui.ctx().content_rect();
+
+                // Darkened modal backdrop
+                egui::Area::new(egui::Id::new("settings_overlay_backdrop"))
+                    .fixed_pos(screen_rect.min)
+                    .order(egui::Order::Foreground)
+                    .show(ui.ctx(), |ui| {
+                        let (rect, response) =
+                            ui.allocate_exact_size(screen_rect.size(), egui::Sense::click());
+                        ui.painter()
+                            .rect_filled(rect, 0.0, egui::Color32::from_black_alpha(140));
+                        if response.clicked() {
+                            self.open = false;
+                        }
+                    });
+
+                let panel_width = (screen_rect.width() - 32.0).clamp(240.0, 360.0);
+                let panel_height = (screen_rect.height() - 64.0).clamp(200.0, 520.0);
+
+                let mut modal_open = self.open;
+                egui::Window::new("⚙ Settings")
+                    .collapsible(false)
+                    .resizable(false)
+                    .pivot(egui::Align2::CENTER_CENTER)
+                    .fixed_pos(screen_rect.center())
+                    .fixed_size([panel_width, panel_height])
+                    .order(egui::Order::Foreground)
+                    .open(&mut modal_open)
+                    .show(ui.ctx(), |ui| {
+                        egui::ScrollArea::vertical().show(ui, |ui| {
+                            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+
+                            self.appearance_ui(ui);
+                            ui.separator();
+
+                            self.run_mode_ui(ui);
+                            ui.separator();
+
+                            self.frame_history.ui(ui);
+                            ui.separator();
+
+                            ui.label("Diagnostic Windows:");
+                            self.egui_windows.checkboxes(ui);
+                            ui.separator();
+
+                            self.integration_ui(ui, frame);
+
+                            #[cfg(not(target_arch = "wasm32"))]
+                            {
+                                ui.separator();
+                                if ui.button("Quit ruxt").clicked() {
+                                    ui.send_viewport_cmd(egui::ViewportCommand::Close);
+                                }
+                            }
+                        });
+                    });
+                self.open = modal_open;
+            }
+        } else {
+            let mut open = self.open;
+            let mut close = false;
+
+            egui::Panel::left("settings_side_panel")
+                .resizable(true)
+                .size_range(180.0..=450.0)
+                .default_size(240.0)
+                .show_collapsible(ui, &mut open, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.heading("Settings");
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui
+                                .small_button("⏴")
+                                .on_hover_text("Collapse Settings Panel")
+                                .clicked()
+                            {
+                                close = true;
+                            }
+                        });
+                    });
+                    ui.separator();
+
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+
+                        self.appearance_ui(ui);
+                        ui.separator();
+
+                        self.run_mode_ui(ui);
+                        ui.separator();
+
+                        self.frame_history.ui(ui);
+                        ui.separator();
+
+                        ui.label("Diagnostic Windows:");
+                        self.egui_windows.checkboxes(ui);
+                        ui.separator();
+
+                        self.integration_ui(ui, frame);
+
+                        #[cfg(not(target_arch = "wasm32"))]
                         {
-                            close = true;
+                            ui.separator();
+                            if ui.button("Quit ruxt").clicked() {
+                                ui.send_viewport_cmd(egui::ViewportCommand::Close);
+                            }
                         }
                     });
                 });
-                ui.separator();
 
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-
-                    self.appearance_ui(ui);
-                    ui.separator();
-
-                    self.run_mode_ui(ui);
-                    ui.separator();
-
-                    self.frame_history.ui(ui);
-                    ui.separator();
-
-                    ui.label("Diagnostic Windows:");
-                    self.egui_windows.checkboxes(ui);
-                    ui.separator();
-
-                    self.integration_ui(ui, frame);
-
-                    #[cfg(not(target_arch = "wasm32"))]
-                    {
-                        ui.separator();
-                        if ui.button("Quit ruxt").clicked() {
-                            ui.send_viewport_cmd(egui::ViewportCommand::Close);
-                        }
-                    }
-                });
-            });
-
-        if close {
-            open = false;
+            if close {
+                open = false;
+            }
+            self.open = open;
         }
-        self.open = open;
 
         self.end_of_frame(ui.ctx());
     }
@@ -136,11 +219,10 @@ impl SettingsPanel {
             .on_hover_text("Continuous repaints at full display refresh rate");
 
         if self.run_mode == RunMode::Continuous {
-            ui.label(
-                egui::RichText::new(format!("Continuous FPS: {:.1}", self.frame_history.fps()))
-                    .small()
-                    .weak(),
-            );
+            ui.horizontal(|ui| {
+                ui.label(egui::RichText::new("Continuous:").small().weak());
+                ui.label(egui::RichText::new(self.fps_display_str()).small().weak());
+            });
         }
     }
 

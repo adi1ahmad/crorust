@@ -1,0 +1,38 @@
+flowchart TD
+    classDef shape fill:#3B0764,stroke:#C084FC,stroke-width:2.5px,color:#FFFFFF;
+    classDef tess fill:#042F2E,stroke:#2DD4BF,stroke-width:2.5px,color:#FFFFFF;
+    classDef prim fill:#1E293B,stroke:#60A5FA,stroke-width:2.5px,color:#FFFFFF;
+    classDef gpu fill:#064E3B,stroke:#34D399,stroke-width:2.5px,color:#FFFFFF;
+
+    subgraph SHAPES ["1. Vector Paint Commands"]
+        ShapesVec["Vec&lt;Shape&gt;<br/>• Shape::Rect (rounding, stroke, fill)<br/>• Shape::Text (galley, color, underline)<br/>• Shape::Path (bezier lines, polygon)<br/>• Shape::Mesh (raw triangles)"]:::shape
+    end
+
+    subgraph TESSELLATION ["2. epaint Tessellation Engine"]
+        TessEngine["Tessellator Engine<br/>• Triangulates convex polygons<br/>• Sub-pixel edge feathering (Anti-Aliasing)<br/>• Font glyph atlas UV mapping"]:::tess
+        VBO["Vertex Buffer: Vec&lt;Vertex&gt;<br/>Vertex { pos: [f32; 2], uv: [f32; 2], color: [u8; 4] } (20 bytes, bytemuck::Pod)"]:::tess
+        IBO["Index Buffer: Vec&lt;u32&gt;<br/>Clockwise triangle vertex index lists"]:::tess
+        Batching["Batching & Sorting Pass<br/>Splits primitives by TextureId and Scissor Rect"]:::tess
+        ClippedPrims["Vec&lt;ClippedPrimitive&gt;<br/>• clip_rect: Scissor bounds in physical pixels<br/>• primitive: Primitive::Mesh (VBO/IBO slice)"]:::prim
+    end
+
+    subgraph WGPU_BACKEND ["3. egui-wgpu Hardware Pipeline"]
+        Upload["Buffer Staging & Allocation<br/>Reallocates GPUBuffer if vertex count grows"]:::gpu
+        Uniforms["Uniform Buffer (BindGroup 0)<br/>Orthographic Projection Matrix: screen_size [w, h]"]:::gpu
+        Textures["Texture BindGroup (BindGroup 1)<br/>Font Atlas + User Textures (wgpu::TextureView + Sampler)"]:::gpu
+        RenderPass["wgpu::RenderPass Execution<br/>• pass.set_pipeline(egui_pipeline)<br/>• pass.set_bind_group(0, uniforms)<br/>• pass.set_bind_group(1, texture)<br/>• pass.set_scissor_rect(clip_rect)<br/>• pass.draw_indexed(indices, base_vertex)"]:::gpu
+        Present["Surface Swapchain<br/>surface_texture.present() (Vulkan/Metal/DX12/WebGPU)"]:::gpu
+    end
+
+    ShapesVec --> TessEngine
+    TessEngine --> VBO
+    TessEngine --> IBO
+    VBO --> Batching
+    IBO --> Batching
+    Batching --> ClippedPrims
+
+    ClippedPrims --> Upload
+    Upload --> RenderPass
+    Uniforms --> RenderPass
+    Textures --> RenderPass
+    RenderPass --> Present

@@ -9,10 +9,7 @@ pub fn easy_mark(ui: &mut Ui, easy_mark: &str) {
 }
 
 pub fn easy_mark_it<'em>(ui: &mut Ui, items: impl Iterator<Item = easy_mark::Item<'em>>) {
-    let initial_size = vec2(
-        ui.available_width(),
-        ui.spacing().interact_size.y,
-    );
+    let initial_size = vec2(ui.available_width(), ui.spacing().interact_size.y);
 
     let layout = Layout::left_to_right(Align::BOTTOM).with_main_wrap(true);
 
@@ -33,7 +30,6 @@ pub fn item_ui(ui: &mut Ui, item: easy_mark::Item<'_>) {
 
     match item {
         easy_mark::Item::Newline => {
-
             ui.allocate_exact_size(vec2(0.0, row_height), Sense::hover());
             ui.end_row();
             ui.set_row_height(row_height);

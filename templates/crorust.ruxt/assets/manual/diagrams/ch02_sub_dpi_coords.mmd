@@ -1,0 +1,21 @@
+flowchart LR
+    classDef phys fill:#1E293B,stroke:#60A5FA,stroke-width:2.5px,color:#FFFFFF;
+    classDef transform fill:#451A03,stroke:#F59E0B,stroke-width:2.5px,color:#FFFFFF;
+    classDef logi fill:#1E3A8A,stroke:#38BDF8,stroke-width:2.5px,color:#FFFFFF;
+
+    subgraph PHYS ["Hardware Physical Pixels (Screen Grid)"]
+        P100["Standard 1080p (Scale 1.0)<br/>1 physical pixel = 1 logical point"]:::phys
+        P200["4K / Retina Display (Scale 2.0)<br/>4 physical pixels = 1 logical point (2x2 grid)"]:::phys
+    end
+
+    subgraph TRANS ["egui-winit Mathematical Scaling"]
+        Formula["Formula:<br/>logical_pos = physical_pos / scale_factor<br/>physical_rect = logical_rect * scale_factor"]:::transform
+    end
+
+    subgraph LOGI ["egui Layout Coordinate Space"]
+        LPoint["Logical Points (Consistent Size)<br/>A button with size [120.0, 40.0] appears the exact<br/>same physical millimeter size on all displays"]:::logi
+    end
+
+    P100 --> Formula
+    P200 --> Formula
+    Formula --> LPoint

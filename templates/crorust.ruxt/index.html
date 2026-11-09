@@ -3,31 +3,147 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>crorust & ruxt — Multi-Host Cross-Compilation Platform & Native GUI Framework</title>
+    <title>crorust — How to Build Cross-Platform Native Apps with Rust | Android, iOS, macOS, Windows, Linux, Web</title>
     
-    <!-- Primary Meta Tags -->
-    <meta name="title" content="crorust & ruxt — Multi-Host Cross-Compilation Platform & Native GUI Framework" />
-    <meta name="description" content="Compile, package, and cryptographically sign native applications for Android, iOS, macOS, Windows, Linux, and WebAssembly without external IDEs." />
-    <meta name="keywords" content="rust, cross-compilation, egui, wgpu, winit, android, apple, windows, msix, apk, appimage, webassembly" />
+    <!-- Canonical & SEO Declarations -->
+    <link rel="canonical" href="https://crorust.com/" />
+    <meta name="title" content="crorust — How to Build Cross-Platform Native Apps with Rust | Android, iOS, macOS, Windows, Linux, Web" />
+    <meta name="description" content="Learn how to build cross-platform native apps with Rust using crorust and ruxt. Compile, package, and cryptographically sign native applications for Android (.apk), iOS (.ipa), macOS (.dmg), Windows (.msix), Linux (.AppImage), and WebAssembly from any workstation without external IDEs." />
+    <meta name="keywords" content="how to build cross platform native apps with rust, rust cross platform gui, rust native app development, cross compile rust to android ios windows macos, rust android apk without gradle, rust windows msix on linux, rust macos dmg codesign, crorust, ruxt, egui cross platform, wgpu native rust app" />
     <meta name="author" content="Adil Ahmad (crorust.com)" />
+    <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#121214" />
 
     <!-- Open Graph / Facebook / Discord -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://crorust.com/" />
-    <meta property="og:title" content="crorust & ruxt — Multi-Host Cross-Compilation Platform & Native GUI Framework" />
-    <meta property="og:description" content="Compile, package, and cryptographically sign native applications for all platforms using a single unified Rust binary." />
+    <meta property="og:title" content="crorust — How to Build Cross-Platform Native Apps with Rust" />
+    <meta property="og:description" content="Zero-config multi-host cross-compilation platform and pure-Rust native app packaging engine for Android, iOS, macOS, Windows, Linux, and Web." />
     <meta property="og:image" content="https://crorust.com/assets/icon_512.png" />
+    <meta property="og:site_name" content="crorust" />
 
     <!-- Twitter Cards -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="https://crorust.com/" />
-    <meta property="twitter:title" content="crorust & ruxt — Multi-Host Cross-Compilation Platform & Native GUI Framework" />
-    <meta property="twitter:description" content="Compile, package, and cryptographically sign native applications for all platforms without external IDEs." />
+    <meta property="twitter:title" content="crorust — How to Build Cross-Platform Native Apps with Rust" />
+    <meta property="twitter:description" content="Compile, package, and cryptographically sign native applications for all platforms from Linux, macOS, or Windows without external IDEs." />
     <meta property="twitter:image" content="https://crorust.com/assets/icon_512.png" />
 
     <link rel="icon" type="image/png" href="assets/icon.png" />
     <link rel="apple-touch-icon" href="assets/icon_512.png" />
+
+    <!-- Schema.org Structured Data (JSON-LD Knowledge Graph) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://crorust.com/#website",
+          "url": "https://crorust.com/",
+          "name": "crorust & ruxt",
+          "description": "Multi-host cross-compilation platform, open-source GUI starter template, and technical learning showcase.",
+          "publisher": {
+            "@type": "Person",
+            "name": "Adil Ahmad",
+            "email": "adilahmad@tuta.io",
+            "url": "https://github.com/adi1ahmad"
+          },
+          "sameAs": [
+            "https://github.com/adi1ahmad/crorust",
+            "https://crates.io/crates/crorust",
+            "https://docs.rs/crorust/latest/crorust/"
+          ]
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://crorust.com/#software-crorust",
+          "name": "crorust",
+          "operatingSystem": "Linux, macOS, Windows",
+          "applicationCategory": "DeveloperApplication",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "downloadUrl": "https://crates.io/crates/crorust",
+          "featureList": [
+            "Zero-config cross-compilation from Linux, macOS, and Windows",
+            "Pure-Rust Android APK generation with APK Signature Scheme v2 without Gradle",
+            "Pure-Rust Windows MSIX packaging with PKCS#7 digital signatures",
+            "Pure-Rust macOS .app and DMG bundling with Apple Notarization",
+            "Pure-Rust Linux AppImage type-2 packaging",
+            "WebAssembly and PWA web deployment",
+            "Hermetic toolchain staging with streaming SHA-256 verification"
+          ]
+        },
+        {
+          "@type": "SoftwareSourceCode",
+          "@id": "https://crorust.com/#software-ruxt-template",
+          "name": "ruxt",
+          "description": "Production-ready cross-platform Rust GUI application starter template with wgpu graphics and immediate-mode UI.",
+          "programmingLanguage": "Rust",
+          "license": "https://opensource.org/licenses/MIT",
+          "codeRepository": "https://github.com/adi1ahmad/crorust",
+          "targetProduct": {
+            "@type": "SoftwareApplication",
+            "name": "ruxt application",
+            "operatingSystem": "Android, iOS, macOS, Windows, Linux, Web"
+          }
+        },
+        {
+          "@type": "Course",
+          "@id": "https://crorust.com/#manual",
+          "name": "Ruxt Framework Technical Manual: Cross-Platform Rust GUI Engineering",
+          "description": "Comprehensive 7-chapter guide covering OS window servers, winit 0.30, egui immediate-mode architecture, context internals, 2D layout geometry, and wgpu hardware pipelines.",
+          "provider": {
+            "@type": "Person",
+            "name": "Adil Ahmad",
+            "url": "https://github.com/adi1ahmad"
+          },
+          "hasCourseInstance": {
+            "@type": "CourseInstance",
+            "courseMode": "Online",
+            "courseWorkload": "PT90M"
+          }
+        },
+        {
+          "@type": "HowTo",
+          "name": "How to Build Cross-Platform Native Apps with Rust",
+          "description": "Step-by-step guide to installing crorust, scaffolding a multi-platform Rust GUI project, and compiling production packages for Android, iOS, Windows, macOS, and Linux.",
+          "step": [
+            {
+              "@type": "HowToStep",
+              "name": "Install crorust CLI and Hermetic Toolchains",
+              "text": "Install crorust from crates.io using cargo install crorust, then run crorust i to verify hermetic LLVM, Android NDK, and SDK headers.",
+              "itemListElement": [{
+                "@type": "HowToDirection",
+                "text": "cargo install crorust && crorust i"
+              }]
+            },
+            {
+              "@type": "HowToStep",
+              "name": "Initialize Project from the ruxt Starter Template",
+              "text": "Generate a production-ready multi-platform application with manifest.toml, wgpu graphics, and platform bridges.",
+              "itemListElement": [{
+                "@type": "HowToDirection",
+                "text": "crorust template init my_app && cd my_app"
+              }]
+            },
+            {
+              "@type": "HowToStep",
+              "name": "Compile and Sign for Any Target Platform",
+              "text": "Build signed packages for Android APK, Windows MSIX, macOS DMG, or Linux AppImage directly from your host workstation.",
+              "itemListElement": [{
+                "@type": "HowToDirection",
+                "text": "crorust build -p android # or -p windows, -p macos, -p linux, -p web"
+              }]
+            }
+          ]
+        }
+      ]
+    }
+    </script>
 
     <style>
         html { touch-action: manipulation; }
@@ -47,6 +163,7 @@
             left: 0;
             width: 100%;
             height: 100%;
+            z-index: 1;
         }
         .loading-container {
             position: absolute;
@@ -55,6 +172,7 @@
             transform: translate(-50%, -50%);
             color: #e6edf3;
             text-align: center;
+            z-index: 2;
         }
         .spinner {
             width: 48px;
@@ -69,6 +187,20 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Accessible semantic content for search engines and screen readers */
+        .crawler-content {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: normal;
+            border: 0;
+            z-index: 0;
+        }
     </style>
 
     <link data-trunk rel="rust" href="Cargo.toml" data-bin="ruxt-app" data-wasm-opt="2" />
@@ -77,6 +209,8 @@
     <link data-trunk rel="copy-file" href="assets/icon.png" data-target-path="assets" />
     <link data-trunk rel="copy-file" href="assets/icon_512.png" data-target-path="assets" />
     <link data-trunk rel="copy-file" href="assets/ruxt-logo.svg" data-target-path="assets" />
+    <link data-trunk rel="copy-file" href="assets/robots.txt" />
+    <link data-trunk rel="copy-file" href="assets/sitemap.xml" data-target-path="assets" />
     <link data-trunk rel="copy-file" href="sw.js" />
 </head>
 <body>
@@ -87,9 +221,432 @@
         <p style="font-size: 13px; color: #8b949e; margin: 0;">Initializing WebAssembly runtime & GPU surface</p>
     </div>
 
+    <!-- Crawlable Semantic DOM for Search Engines and Screen Readers -->
+    <main class="crawler-content">
+        <article>
+            <header>
+                <h1>crorust &amp; ruxt — Cross-Platform Native Apps with Rust</h1>
+                <p>Welcome to <strong>crorust.com</strong>. This platform fulfills three core roles in the Rust ecosystem:</p>
+                <ol>
+                    <li><strong>The crorust Tool:</strong> Zero-config hermetic multi-host cross-compilation platform and pure-Rust native app packaging suite for Android, iOS, macOS, Windows, Linux, and Web.</li>
+                    <li><strong>The ruxt Starter Template:</strong> An open-source, production-grade application template released under a permissive dual-license (<strong>MIT OR Apache-2.0</strong>) for anyone to fork and build cross-platform GUI software.</li>
+                    <li><strong>Interactive Showcase &amp; Architectural Tutorial:</strong> A live demonstration and 7-layer engineering manual covering the crates used (winit 0.30, egui 0.36, wgpu 24.0, epaint, and egui_kittest).</li>
+                </ol>
+                <nav aria-label="Ecosystem Authority Links">
+                    <ul>
+                        <li><a href="https://crates.io/crates/crorust" rel="noopener">Install crorust on crates.io</a></li>
+                        <li><a href="https://docs.rs/crorust/latest/crorust/" rel="noopener">crorust API Documentation on docs.rs</a></li>
+                        <li><a href="https://github.com/adi1ahmad/crorust" rel="noopener">crorust Source Code on GitHub</a></li>
+                        <li><a href="#commands">CLI Commands Reference</a></li>
+                        <li><a href="#crates">Platform Crates Architecture</a></li>
+                        <li><a href="#ruxt-template">ruxt Starter Template &amp; Open Source License</a></li>
+                        <li><a href="#framework-manual">Ruxt Framework Technical Manual (7 Chapters)</a></li>
+                    </ul>
+                </nav>
+            </header>
+
+            <section id="why-crorust">
+                <h2>Why crorust: Breaking the Cross-Compilation Wall</h2>
+                <p>Traditionally, compiling Rust applications for multiple operating systems required siloed workstation hardware: Android required 15GB of Android Studio and Gradle caches; Windows required Visual Studio MSVC tools; iOS demanded a physical Mac with Xcode. crorust breaks down these walls by driving LLVM directly and implementing pure-Rust binary packagers for all operating systems.</p>
+                <ul>
+                    <li><strong>Multi-Host Development:</strong> Linux, macOS, and Windows engineers build on the exact same codebase with identical CLI commands.</li>
+                    <li><strong>Cross-Target Deployment:</strong> Compile Android APKs, Windows MSIX, macOS DMGs, iOS apps, and Linux AppImages from any host OS.</li>
+                    <li><strong>Hermetic Toolchains:</strong> Platform SDKs (NDK, Adoptium JDK 17, D8, Apple and Windows SDK headers) are downloaded once, verified with streaming SHA-256 digests, and cached locally in project-scoped directories.</li>
+                    <li><strong>Pure-Rust Packaging:</strong> In-tree crates (crorust-android, crorust-apple, crorust-windows, crorust-linux, crorust-mvn) build and cryptographically sign packages with zero external IDE dependencies.</li>
+                </ul>
+            </section>
+
+            <section id="quickstart">
+                <h2>Quickstart: Build Your First Cross-Platform Native App</h2>
+                <pre><code># 1. Install crorust CLI
+cargo install crorust
+
+# 2. Stage hermetic toolchains
+crorust i
+
+# 3. Initialize a cross-platform project from the ruxt template
+crorust template init my_app
+cd my_app
+
+# 4. Build native packages for any platform:
+crorust build -p android --release   # Builds v2-signed APK with zero Gradle
+crorust build -p windows --release   # Builds signed MSIX package with OPC & PRI
+crorust build -p macos --format dmg  # Builds signed DMG via pure-Rust apple-codesign
+crorust build -p linux --release     # Builds AppImage Type-2 with pure-Rust squashfs
+crorust build -p web                 # Builds WebAssembly PWA distribution
+                </code></pre>
+            </section>
+
+            <!-- Role 1: CLI Commands Reference Manual -->
+            <section id="commands">
+                <h2>Role 1: crorust CLI Commands Reference Manual</h2>
+                <p>Complete reference manual for all crorust CLI commands, parameters, options, and build targets.</p>
+
+                <article>
+                    <h3><code>crorust i</code> — Initialize &amp; Verify Hermetic Toolchains</h3>
+                    <p>Launches the interactive installer or runs headlessly to verify and download minimal LLVM/Clang headers, Android NDK platforms, Java JDK 17, and Windows/Apple sysroots into <code>~/.cache/crorust/</code> (or project-scoped <code>.cache/crorust/</code>).</p>
+                    <pre><code>crorust i --non-interactive</code></pre>
+                    <dl>
+                        <dt><code>--non-interactive</code></dt>
+                        <dd>Run without curses TUI (ideal for CI/CD automation and headless runners).</dd>
+                        <dt><code>--check</code></dt>
+                        <dd>Verify existing sysroots and integrity checksums without downloading missing packages.</dd>
+                    </dl>
+                </article>
+
+                <article>
+                    <h3><code>crorust build</code> — Cross-Compile &amp; Package Native Artifacts</h3>
+                    <p>Drives Cargo with synthesized target flags and invokes in-tree packagers to construct production-ready release artifacts for Android, Windows, macOS, Linux, and Web.</p>
+                    <pre><code>crorust build --platform android --apk --release
+crorust build --platform windows --msix --release
+crorust build --platform macos --format dmg
+crorust build --platform linux --release
+crorust build --platform web</code></pre>
+                    <dl>
+                        <dt><code>--platform &lt;android|apple|windows|linux|web&gt;</code></dt>
+                        <dd>Target operating system.</dd>
+                        <dt><code>--arch &lt;aarch64|x86_64&gt;</code></dt>
+                        <dd>Target CPU architecture.</dd>
+                        <dt><code>--apk</code></dt>
+                        <dd>Build signed Android APK package without Gradle.</dd>
+                        <dt><code>--aab</code></dt>
+                        <dd>Build Android App Bundle for Google Play Store publication.</dd>
+                        <dt><code>--dmg</code></dt>
+                        <dd>Build signed macOS DMG installer with Apple notarization support.</dd>
+                        <dt><code>--msix</code></dt>
+                        <dd>Build Windows MSIX bundle with Authenticode digital signatures.</dd>
+                        <dt><code>--appimage</code></dt>
+                        <dd>Build Linux Type 2 AppImage with embedded SquashFS and runtime stubs.</dd>
+                        <dt><code>--release</code></dt>
+                        <dd>Optimize with LTO, strip debug symbols, and apply release keystore signatures.</dd>
+                    </dl>
+                </article>
+
+                <article>
+                    <h3><code>crorust run</code> — Deploy, Launch &amp; Stream Hardware Logs</h3>
+                    <p>Compiles the target binary, deploys it to a physical device or emulator, launches the application, and streams stdout/logcat output directly back to your workstation terminal.</p>
+                    <pre><code>crorust run --device adb:emulator-5554</code></pre>
+                </article>
+
+                <article>
+                    <h3><code>crorust devices</code> — List Connected Hardware &amp; Emulators</h3>
+                    <p>Discovers all attached Android devices via ADB, Apple devices/simulators via CoreSimulator bridge, and local desktop display servers.</p>
+                    <pre><code>crorust devices</code></pre>
+                </article>
+
+                <article>
+                    <h3><code>crorust cert</code> — Zero-Config Cryptographic Certificates</h3>
+                    <p>Generates self-signed developer certificates, PKCS#12 keystores for Android v2 signing, and Authenticode keys for Windows packaging without OpenSSL CLI commands.</p>
+                    <pre><code>crorust cert generate --output debug.p12</code></pre>
+                </article>
+
+                <article>
+                    <h3><code>crorust cache</code> — Manage Hermetic Toolchain Cache</h3>
+                    <p>Inspects disk usage of <code>~/.cache/crorust/</code> (sysroots, Maven AARs, SDK headers) and allows selective cache pruning.</p>
+                    <pre><code>crorust cache --stats
+crorust cache --clean</code></pre>
+                </article>
+
+                <article>
+                    <h3><code>crorust template init</code> — Scaffold Multi-Platform Application</h3>
+                    <p>Extracts the crorust.ruxt reference boilerplate into a new project directory with ready-to-build desktop, mobile, and web targets.</p>
+                    <pre><code>crorust template init my_awesome_app
+cd my_awesome_app
+crorust run</code></pre>
+                </article>
+            </section>
+
+            <!-- Role 1: Platform Architecture & Member Crates -->
+            <section id="crates">
+                <h2>Role 1: crorust Workspace Crates Architecture</h2>
+                <p>Pure-Rust, host-agnostic member crates that assemble and cryptographically sign distribution packages on any workstation.</p>
+
+                <article>
+                    <h3><code>crorust</code> — CLI Orchestrator &amp; Toolchain Synthesizer</h3>
+                    <p>The root command-line tool, configuration parser, and Cargo flag synthesizer. Available on <a href="https://crates.io/crates/crorust" rel="noopener">crates.io/crates/crorust</a> with official documentation on <a href="https://docs.rs/crorust/latest/crorust/" rel="noopener">docs.rs/crorust</a> and full source code on <a href="https://github.com/adi1ahmad/crorust" rel="noopener">GitHub</a>. crorust parses manifest.toml, resolves target hardware devices (via ADB and Xcode simulators), manages the hermetic toolchain cache in <code>~/.cache/crorust/</code>, and synthesizes <code>RUSTFLAGS</code>, <code>CFLAGS</code>, and linker flags.</p>
+                    <pre><code>crorust build --platform android --apk
+crorust run --device adb:emulator-5554</code></pre>
+                </article>
+
+                <article>
+                    <h3><code>crorust-android</code> — Pure-Rust Android APK &amp; AAB Packaging Engine</h3>
+                    <p>Builds and signs Android APK and AAB packages in pure Rust without Gradle or Android Studio. Encodes AndroidManifest.xml into Android Binary XML (AXML) with string pools and resource maps. Generates binary ARSC resource tables. Implements Android APK Signature Scheme v2 by computing 1MB Merkle tree chunk hashes and embedding the signing block directly before the ZIP Central Directory. Enforces 16KB and 4KB page alignment for zero-copy memory mapping (<code>mmap</code>).</p>
+                    <pre><code>// Synthesize and sign APK in pure Rust
+let apk = ApkBuilder::new(manifest)
+    .add_dex(dex_bytes)
+    .add_native_lib(TargetArch::Arm64, lib_bytes)
+    .sign_v2(&keypair)?;</code></pre>
+                </article>
+
+                <article>
+                    <h3><code>crorust-apple</code> — Apple macOS &amp; iOS Packaging Engine (No Xcode)</h3>
+                    <p>Packages macOS .app bundles, DMG disk images, and iOS .app/.ipa packages on any host. Parses Mach-O 64-bit binary headers, allocates LC_CODE_SIGNATURE load commands, and constructs Apple CMS/PKCS#7 signature blobs with SHA-256 CodeDirectory slots. Synthesizes binary Info.plist files and packages read-only HFS+/APFS DMG images without invoking hdiutil.</p>
+                    <pre><code>// Ad-hoc or developer codesigning of Mach-O binary without macOS
+let signed_macho = apple_engine::sign_macho(&macho_bytes, &code_identity)?;</code></pre>
+                </article>
+
+                <article>
+                    <h3><code>crorust-windows</code> — Windows MSIX &amp; Authenticode Engine</h3>
+                    <p>Builds Windows MSIX Open Packaging Conventions (OPC) containers and Authenticode signatures. Generates AppxManifest.xml, Package Resource Index (PRI) resources, and AppxBlockMap.xml containing 64KB block SHA-256 hashes. Signs the container with X.509 Authenticode certificates.</p>
+                    <pre><code>// Package and sign MSIX OPC bundle
+let msix = MsixPackage::builder()
+    .manifest(appx_manifest)
+    .binary("app.exe", exe_bytes)
+    .sign(&cert, &key)?;</code></pre>
+                </article>
+
+                <article>
+                    <h3><code>crorust-linux</code> — Linux AppDir &amp; Type 2 AppImage Engine</h3>
+                    <p>Constructs portable Linux AppImages using pure-Rust SquashFS compression. Synthesizes standard Linux AppDir directories (desktop entries, icons, MIME types, dynamic loader paths) and compresses them into standalone Type 2 AppImages using the backhand SquashFS library.</p>
+                    <pre><code>// Build Type 2 AppImage
+let appimage = AppImageBuilder::new(appdir)
+    .compress_squashfs()
+    .emit_standalone_binary()?;</code></pre>
+                </article>
+
+                <article>
+                    <h3><code>crorust-mvn</code> — Pure-Rust Maven Solver with PubGrub</h3>
+                    <p>Hermetic Maven POM dependency solver for Android AAR/JAR dependencies without Gradle. Parses Maven POM XML files, evaluates version ranges, and computes optimal dependency closures using the PubGrub algorithm. Downloads and verifies SHA-256 hashes into <code>~/.cache/crorust/mvn/</code>.</p>
+                    <pre><code>// Solve transitive Android dependencies
+let solver = MvnSolver::new(repo_url);
+let resolved_aars = solver.resolve(&["androidx.appcompat:appcompat:1.6.1"])?;</code></pre>
+                </article>
+
+                <article>
+                    <h3><code>crorust-common</code> — Shared Foundations, Crypto &amp; Memory Alignment</h3>
+                    <p>Shared primitives for cryptographic signing, byte alignment, and ZIP container handling. Provides SHA-256, RSA-2048, and ECDSA P-256 signing operations; 4KB memory page alignment helpers; and high-performance streaming ZIP readers and writers.</p>
+                    <pre><code>// Compute 4KB memory alignment for mmap binary execution
+let aligned_offset = crorust_common::align_up(current_pos, 4096);</code></pre>
+                </article>
+
+                <article>
+                    <h3><code>crorust-runtime-stub</code> — Minimal Runtime Linker Stubs</h3>
+                    <p>Lightweight runtime stubs satisfying platform C runtime linker requirements when linking Rust binaries against bare-metal or minimal sysroots.</p>
+                    <pre><code>// Minimal platform entry stub
+#[no_mangle]
+pub extern "C" fn _crorust_runtime_init() {}</code></pre>
+                </article>
+            </section>
+
+            <!-- Role 3: Ruxt Framework Technical Manual (7 Chapters) -->
+            <section id="framework-manual">
+                <h2>Role 3: Ruxt Framework Technical Manual: The 7 Architectural Layers</h2>
+                <p>The definitive engineering manual for cross-platform Rust graphical application development with winit, egui, and wgpu.</p>
+
+                <!-- Chapter 1 -->
+                <article id="manual-ch01">
+                    <h3>Chapter 1: The Platform Foundation — OS RunLoops &amp; winit</h3>
+                    <p>Every cross-platform graphical application rests upon a hardware abstraction layer that bridges the operating system's asynchronous interrupt queues to user space. winit 0.30 normalizes window servers, enforces the Thread 0 GUI constraint, manages mobile surface lifetimes, and coordinates cross-thread execution via EventLoopProxy.</p>
+                    
+                    <h4>1. OS Window Servers &amp; The Main-Thread GUI Constraint</h4>
+                    <p>Operating system windowing systems (Win32 HWND message pumps via <code>GetMessageW</code>/<code>DispatchMessageW</code>, macOS Cocoa <code>NSRunLoop</code>, Wayland <code>wl_event_queue_dispatch</code>, Android <code>ALooper</code>, and iOS <code>UIApplicationMain</code>) require that UI windows and event loops remain bound strictly to <strong>Thread 0 (the initial main process thread)</strong>. Dispatching UI draw calls or polling windows from secondary worker threads triggers thread affinity panics or fatal X11/Cocoa errors.</p>
+
+                    <h4>2. winit 0.30 <code>ApplicationHandler</code> Lifecycle</h4>
+                    <p>In winit 0.30, the event loop implements the stateful <code>ApplicationHandler</code> trait instead of a closure-based pump:</p>
+                    <ul>
+                        <li><code>resumed(&amp;mut event_loop)</code>: Invoked when the OS grants an active drawing surface (essential on Android and iOS when resuming from background).</li>
+                        <li><code>window_event(&amp;mut window, id, event)</code>: Dispatches input events (touch, mouse, keyboard, resize).</li>
+                        <li><code>user_event(&amp;mut event_loop, event)</code>: Receives custom application messages dispatched from background Tokio worker threads.</li>
+                        <li><code>about_to_wait(&amp;mut event_loop)</code>: Invoked when all pending OS events are drained, allowing the app to request redraw or sleep.</li>
+                    </ul>
+
+                    <h4>3. Cross-Thread Wakeups via <code>EventLoopProxy</code></h4>
+                    <p>To communicate from async worker threads (e.g. Tokio network tasks or disk I/O) to the main thread without race conditions, winit provides <code>EventLoopProxy&lt;UserEvent&gt;</code>. It is <code>Send + Sync</code> and triggers a low-level OS wake signal (<code>eventfd</code> on Linux, <code>PostMessageW</code> on Windows, and <code>CFRunLoopSourceSignal</code> on macOS).</p>
+                    <pre><code>// Cross-thread event wakeup pattern
+let proxy = event_loop.create_proxy();
+tokio::spawn(async move {
+    let result = fetch_remote_data().await;
+    proxy.send_event(UserEvent::DataLoaded(result)).ok();
+});</code></pre>
+                </article>
+
+                <!-- Chapter 2 -->
+                <article id="manual-ch02">
+                    <h3>Chapter 2: The Bridge — Translating Window Events to GUI Input</h3>
+                    <p>The core egui library is completely decoupled from operating system APIs, windowing systems, and graphics runtimes. The <code>egui-winit</code> crate serves as an essential bidirectional adapter: it translates raw OS window events into logical <code>RawInput</code> structs and channels egui's <code>PlatformOutput</code> back to OS window-mutating commands.</p>
+
+                    <h4>1. The Adapter Pattern</h4>
+                    <p>egui does not link against winit or OS libraries directly. Instead, <code>egui_winit::State</code> maintains a pure abstraction barrier, transforming native window events into egui-consumable inputs.</p>
+
+                    <h4>2. High-DPI Scaling &amp; Physical-to-Logical Coordinates</h4>
+                    <p>Operating systems deliver mouse coordinates and window sizes in <em>physical pixels</em> (scaled by display density, e.g. 200% on Retina/4K displays). egui operates entirely in <em>logical points</em>. The bridge computes:</p>
+                    <pre><code>let logical_pos = physical_pos.to_logical(pixels_per_point);</code></pre>
+
+                    <h4>3. The <code>PlatformOutput</code> Feedback Loop</h4>
+                    <p>After rendering a frame, egui produces a <code>PlatformOutput</code> struct containing:</p>
+                    <ul>
+                        <li><strong>Cursor Icon Mutations:</strong> Changing the OS mouse cursor (e.g. Pointer, Text, Grab, ResizeHorizontal).</li>
+                        <li><strong>System Clipboard:</strong> Copying text to the OS pasteboard.</li>
+                        <li><strong>IME Composition Rect:</strong> Positioning the native Input Method Editor candidate box directly under the active text cursor.</li>
+                        <li><strong>Open URL Commands:</strong> Launching system default browsers.</li>
+                    </ul>
+                </article>
+
+                <!-- Chapter 3 -->
+                <article id="manual-ch03">
+                    <h3>Chapter 3: The Immediate-Mode GUI (IMGUI) Architecture</h3>
+                    <p>Understanding the immediate-mode paradigm versus traditional retained-mode GUI frameworks. In retained mode (DOM, Qt, WPF), developers construct and mutate a long-lived tree of widget objects. In immediate mode, the UI is reconstructed from scratch every frame as a pure projection of application state: <code>f(State) -&gt; UI</code>.</p>
+
+                    <h4>1. Retained vs. Immediate Mental Model</h4>
+                    <p>There are no widget handles, no event listener callbacks, and no two-way synchronization bugs. If a boolean is true, the button is rendered; if false, it is simply not drawn.</p>
+
+                    <h4>2. The 64-bit <code>egui::Id</code> Hashing Mechanism</h4>
+                    <p>Because widgets are ephemeral and do not persist in memory, egui uses a 64-bit Murmur64 hash to identify widgets across frames for interactions like scroll positions, text selection, and animations. When creating widgets inside dynamic loops, developers use <code>ui.push_id(item_id, |ui| { ... })</code> to guarantee unique hashing and prevent ID collisions.</p>
+
+                    <h4>3. The <code>egui::Memory</code> Cache</h4>
+                    <p>State that outlives a single frame (window positions, collapsed tree headers, text cursor blinks) is stored in a centralized <code>Memory</code> struct keyed by <code>Id</code>, which automatically garbage-collects unused widget state.</p>
+                </article>
+
+                <!-- Chapter 4 -->
+                <article id="manual-ch04">
+                    <h3>Chapter 4: The Engine Core — Deep Dive into egui::Context</h3>
+                    <p>The <code>egui::Context</code> is the central coordinator of the entire immediate-mode engine. It holds the input state, output commands, style sheets, font glyph atlases, and repaint request queues.</p>
+
+                    <h4>1. Interior Mutability &amp; Thread Safety</h4>
+                    <p><code>Context</code> wraps an <code>Arc&lt;ContextImpl&gt;</code> with internal read-write locks (<code>RwLock</code>). It is cheap to clone (pointer-sized copy) and can be passed freely across threads.</p>
+
+                    <h4>2. Repaint Scheduling &amp; Frame Pacing</h4>
+                    <p>To avoid draining battery life and consuming 100% CPU on static screens, egui does not render at a continuous 60 FPS by default. It sleeps until an input event occurs or a widget calls:</p>
+                    <ul>
+                        <li><code>ctx.request_repaint()</code>: Requests immediate repaint on the next frame (e.g. on mouse hover or button press).</li>
+                        <li><code>ctx.request_repaint_after(duration)</code>: Schedules a delayed repaint for animations or timers.</li>
+                    </ul>
+
+                    <h4>3. Glyph Atlasing &amp; Fontdue Rasterization</h4>
+                    <p>egui embeds pure-Rust font rasterization (via <code>fontdue</code>/<code>ab_glyph</code>). Text glyphs are dynamically rendered into a single-channel alpha texture atlas, uploaded to GPU VRAM, and reused across all text rendering operations.</p>
+                </article>
+
+                <!-- Chapter 5 -->
+                <article id="manual-ch05">
+                    <h3>Chapter 5: UI Geometry, Layout Engine &amp; Custom Widgets</h3>
+                    <p>How egui arranges widgets in 2D space without CSS or constraint solvers, and how to implement custom interactive controls using the <code>Widget</code> trait.</p>
+
+                    <h4>1. 2D Coordinate Algebra: <code>Pos2</code>, <code>Vec2</code>, and <code>Rect</code></h4>
+                    <p>All layout calculations in egui operate on 2D vectors (<code>Vec2</code>), points (<code>Pos2</code>), and bounding boxes (<code>Rect</code>). A <code>Rect</code> is defined by <code>min</code> (top-left) and <code>max</code> (bottom-right) coordinates.</p>
+
+                    <h4>2. Cursor Advancement &amp; Bounding Box Allocation</h4>
+                    <p>As widgets are added to a <code>Ui</code>, egui advances an internal 2D cursor. When a widget requests space, it calls <code>ui.allocate_exact_size(size, sense)</code>, which reserves a <code>Rect</code> and advances the cursor downward or rightward.</p>
+
+                    <h4>3. Implementing the <code>egui::Widget</code> Trait</h4>
+                    <pre><code>pub struct CustomDial { pub value: f32 }
+
+impl egui::Widget for CustomDial {
+    fn ui(self, ui: &amp;mut egui::Ui) -&gt; egui::Response {
+        let (rect, response) = ui.allocate_exact_size(egui::vec2(60.0, 60.0), egui::Sense::click_and_drag());
+        if ui.is_rect_visible(rect) {
+            let painter = ui.painter();
+            painter.circle_filled(rect.center(), 28.0, egui::Color32::from_rgb(30, 41, 59));
+        }
+        response
+    }
+}</code></pre>
+                </article>
+
+                <!-- Chapter 6 -->
+                <article id="manual-ch06">
+                    <h3>Chapter 6: The Rendering Pipeline — From Shapes to Hardware Pixels</h3>
+                    <p>The complete journey from high-level paint declarations down to GPU draw calls executing on Vulkan, Metal, DirectX 12, or WebGPU.</p>
+
+                    <h4>1. Intermediate Paint Shapes</h4>
+                    <p>Widgets do not emit draw calls directly. They emit abstract vector geometry into <code>Vec&lt;Shape&gt;</code> (lines, circles, bezier curves, quads, and text glyphs).</p>
+
+                    <h4>2. Tessellation &amp; Anti-Aliased Feathering</h4>
+                    <p>The <code>epaint</code> tessellator converts abstract shapes into triangle meshes (vertices and indices). It generates smooth sub-pixel anti-aliasing by adding transparent 1.0-pixel border fringes to polygon boundaries without requiring expensive multi-sample anti-aliasing (MSAA).</p>
+
+                    <h4>3. The 20-Byte Vertex Stride</h4>
+                    <p>epaint generates tightly packed, cache-coherent vertices with a compact 20-byte stride:</p>
+                    <ul>
+                        <li><code>pos: [f32; 2]</code> (8 bytes: X and Y coordinates in logical points)</li>
+                        <li><code>uv: [f32; 2]</code> (8 bytes: U and V texture coordinates in the font atlas)</li>
+                        <li><code>color: [u8; 4]</code> (4 bytes: RGBA 8-bit vertex color with premultiplied alpha)</li>
+                    </ul>
+
+                    <h4>4. <code>egui-wgpu</code> Hardware Execution</h4>
+                    <p>The <code>egui-wgpu</code> backend binds the vertex buffer, index buffer, uniform projection matrix, and texture bind groups, executing indexed draw calls inside a standard <code>wgpu::RenderPass</code>.</p>
+                </article>
+
+                <!-- Chapter 7 -->
+                <article id="manual-ch07">
+                    <h3>Chapter 7: Integration in Ruxt — Multi-Platform Architecture &amp; Testing</h3>
+                    <p>Synthesizing the entire architecture: compiling across desktop, mobile, and web targets with declarative configuration in <code>manifest.toml</code>, and verifying UI logic headlessly with <code>egui_kittest</code>.</p>
+
+                    <h4>1. The 9-Stage Ruxt Execution Pipeline</h4>
+                    <p>From OS window interrupts, winit event translation, egui frame execution, layout algebra, shape gathering, epaint tessellation, wgpu buffer upload, GPU rasterization, to hardware scanout.</p>
+
+                    <h4>2. Mobile &amp; Web Nuances</h4>
+                    <p>Ruxt normalizes mobile 48dp minimum touch target boundaries, touch scroll inertia, and WebAssembly async event loops without platform-specific code branching.</p>
+
+                    <h4>3. Automated Headless Testing with <code>egui_kittest</code></h4>
+                    <p>Ruxt applications can be verified in headless CI/CD environments without requiring a physical monitor or GPU display server using <code>egui_kittest</code>:</p>
+                    <pre><code>#[test]
+fn test_ruxt_application_headless() {
+    let mut harness = egui_kittest::Harness::new(|ctx| {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.label("Hello Headless World");
+        });
+    });
+    harness.run();
+}</code></pre>
+                </article>
+            </section>
+
+            <!-- Role 2: ruxt Production Starter Template -->
+            <section id="ruxt-template">
+                <h2>Role 2: The ruxt Production Starter Template (Open Source MIT / Apache-2.0)</h2>
+                <p>crorust.com is not only a documentation site; it is a live deployment of <code>ruxt</code>, the official, production-ready cross-platform application starter template. <code>ruxt</code> is released under a permissive dual-license (<strong>MIT OR Apache-2.0</strong>), allowing individuals, open-source contributors, and commercial enterprises to freely fork, modify, and build production applications with zero licensing fees or restrictive copyleft obligations.</p>
+
+                <article>
+                    <h3>Scaffold Your Application in Seconds</h3>
+                    <p>Initialize a new cross-platform Rust GUI project using the crorust CLI:</p>
+                    <pre><code># 1. Install crorust and stage minimal toolchains
+cargo install crorust && crorust i
+
+# 2. Scaffold a new application from the ruxt template
+crorust template init my_app
+cd my_app
+
+# 3. Launch live on your desktop workstation
+crorust run
+
+# 4. Cross-compile for production release
+crorust build -p android --apk --release    # Pure-Rust signed APK
+crorust build -p windows --msix --release   # Pure-Rust signed MSIX
+crorust build -p macos --format dmg         # Pure-Rust signed DMG
+crorust build -p linux --release            # Pure-Rust Type-2 AppImage
+crorust build -p web                        # WebAssembly PWA distribution</code></pre>
+                </article>
+
+                <article>
+                    <h3>Pre-Configured Architecture &amp; Production Features</h3>
+                    <p>The <code>ruxt</code> template eliminates weeks of boilerplate setup by providing pre-wired foundations:</p>
+                    <ul>
+                        <li><strong>Graphics Acceleration via wgpu:</strong> Hardware-accelerated rendering powered by WebGPU, Vulkan, Metal, and DirectX 12, with automatic fallback to OpenGL (<code>glow</code>).</li>
+                        <li><strong>Immediate-Mode UI via egui:</strong> Declarative, responsive UI powered by <code>egui 0.36</code>, including custom widgets, data tables, and dynamic visual themes (Dark &amp; Light modes).</li>
+                        <li><strong>Declarative Multi-Platform Manifest (<code>manifest.toml</code>):</strong> Configure application package names, deep links, intent filters, Android permissions, Windows capabilities, and Apple entitlements in a single unified configuration file.</li>
+                        <li><strong>Universal File Import:</strong> Native file loading supporting image viewing (PNG, JPEG, WebP) and markdown document rendering working identically across Desktop (native <code>rfd</code> dialogs), Android (SAF content URIs), and WebAssembly (browser <code>FileReader</code> API).</li>
+                        <li><strong>Mobile Ergonomics &amp; Touch Bounds:</strong> Responsive single-column layouts on smartphones with automatic 48dp minimum touch bounds, smooth inertial touch scrolling, and safe area insets.</li>
+                        <li><strong>State Persistence:</strong> Serializes and restores window dimensions, active navigation tabs, theme preferences, and user workspace states via <code>eframe::persistence</code> and <code>serde</code>.</li>
+                        <li><strong>Automated Headless Testing:</strong> Integrated with <code>egui_kittest</code> to enable fast, headless UI test execution in CI/CD environments without requiring a physical monitor or GPU display server.</li>
+                    </ul>
+                </article>
+
+                <article>
+                    <h3>Permissive Open-Source Dual License</h3>
+                    <p>The <code>ruxt</code> application template is dual-licensed under both:</p>
+                    <ul>
+                        <li><strong>The MIT License:</strong> Permissive, allowing commercial usage, distribution, modification, and private sublicensing.</li>
+                        <li><strong>The Apache License, Version 2.0:</strong> Provides explicit copyright and patent grants for enterprise and commercial safety.</li>
+                    </ul>
+                    <p>Full source code and license terms are maintained in the official repository on <a href="https://github.com/adi1ahmad/crorust" rel="noopener">GitHub (adi1ahmad/crorust)</a> under <code>LICENSE-MIT</code> and <code>LICENSE-APACHE</code>.</p>
+                </article>
+            </section>
+        </article>
+    </main>
+
     <noscript>
         <div class="loading-container">
-            <p>JavaScript and WebAssembly are required to run crorust & ruxt.</p>
+            <p>JavaScript and WebAssembly are required to run the interactive crorust & ruxt showcase.</p>
+            <p>Explore crorust on <a href="https://crates.io/crates/crorust" style="color: #58a6ff;">crates.io</a>, read the <a href="https://docs.rs/crorust/latest/crorust/" style="color: #58a6ff;">documentation on docs.rs</a>, or inspect the <a href="https://github.com/adi1ahmad/crorust" style="color: #58a6ff;">source code on GitHub</a>.</p>
         </div>
     </noscript>
 

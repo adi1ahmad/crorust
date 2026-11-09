@@ -1,16 +1,23 @@
 use super::parser as easy_mark_parser;
 
+use egui::Color32;
+
 #[derive(Default, Clone)]
 pub struct MemoizedEasymarkHighlighter {
-    style: egui::Style,
+    style_fingerprint: (bool, Color32, Color32),
     code: String,
     output: egui::text::LayoutJob,
 }
 
 impl MemoizedEasymarkHighlighter {
     pub fn highlight(&mut self, egui_style: &egui::Style, code: &str) -> egui::text::LayoutJob {
-        if (&self.style, self.code.as_str()) != (egui_style, code) {
-            self.style = egui_style.clone();
+        let fingerprint = (
+            egui_style.visuals.dark_mode,
+            egui_style.visuals.text_color(),
+            egui_style.visuals.code_bg_color,
+        );
+        if (self.style_fingerprint, self.code.as_str()) != (fingerprint, code) {
+            self.style_fingerprint = fingerprint;
             code.clone_into(&mut self.code);
             self.output = highlight_easymark(egui_style, code);
         }
@@ -58,7 +65,6 @@ pub fn highlight_easymark(egui_style: &egui::Style, mut text: &str) -> egui::tex
         if text.starts_with('\\') && text.len() >= 2 {
             skip = 2;
         } else if start_of_line && text.starts_with(' ') {
-
             skip = 1;
         } else if start_of_line && text.starts_with("# ") {
             style.heading = true;
@@ -66,14 +72,11 @@ pub fn highlight_easymark(egui_style: &egui::Style, mut text: &str) -> egui::tex
         } else if start_of_line && text.starts_with("> ") {
             style.quoted = true;
             skip = 2;
-
         } else if start_of_line && text.starts_with("- ") {
             skip = 2;
-
         } else if text.starts_with('*') {
             skip = 1;
             if style.strong {
-
                 job.append(&text[..skip], 0.0, format_from_style(egui_style, &style));
                 text = &text[skip..];
                 skip = 0;
@@ -82,7 +85,6 @@ pub fn highlight_easymark(egui_style: &egui::Style, mut text: &str) -> egui::tex
         } else if text.starts_with('$') {
             skip = 1;
             if style.small {
-
                 job.append(&text[..skip], 0.0, format_from_style(egui_style, &style));
                 text = &text[skip..];
                 skip = 0;
@@ -91,7 +93,6 @@ pub fn highlight_easymark(egui_style: &egui::Style, mut text: &str) -> egui::tex
         } else if text.starts_with('^') {
             skip = 1;
             if style.raised {
-
                 job.append(&text[..skip], 0.0, format_from_style(egui_style, &style));
                 text = &text[skip..];
                 skip = 0;

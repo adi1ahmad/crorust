@@ -251,7 +251,6 @@ impl crate::View for TessellationTest {
                 }
 
                 if 3.0 < magnification_pixel_size {
-
                     let pixel_radius = 0.75;
                     let pixel_color = Color32::GRAY;
                     for yi in 0.. {

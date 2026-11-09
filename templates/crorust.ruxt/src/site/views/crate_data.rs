@@ -30,7 +30,14 @@ pub const ALL_CRATES: &[CrateInfo] = &[
         details: "crorust parses manifest.toml, resolves target hardware devices (via ADB and Xcode simulators), \
                  manages the hermetic toolchain cache in ~/.cache/crorust/, and synthesizes RUSTFLAGS, CFLAGS, and linker flags.",
         formats: &["manifest.toml", "Cargo.toml", "SessionBuildTarget"],
-        dependencies: &["crorust-android", "crorust-apple", "crorust-windows", "crorust-linux", "crorust-mvn", "crorust-common"],
+        dependencies: &[
+            "crorust-android",
+            "crorust-apple",
+            "crorust-windows",
+            "crorust-linux",
+            "crorust-mvn",
+            "crorust-common",
+        ],
         sample_code: "crorust build --platform android --apk\ncrorust run --device adb:emulator-5554",
     },
     CrateInfo {
@@ -53,7 +60,13 @@ pub const ALL_CRATES: &[CrateInfo] = &[
         details: "Parses Mach-O 64-bit binary headers, allocates LC_CODE_SIGNATURE load commands, and constructs \
                  Apple CMS/PKCS#7 signature blobs with SHA-256 CodeDirectory slots. Synthesizes binary Info.plist files \
                  and packages read-only HFS+/APFS DMG images without invoking hdiutil.",
-        formats: &[".app", ".dmg", ".ipa", "Info.plist", "Mach-O LC_CODE_SIGNATURE"],
+        formats: &[
+            ".app",
+            ".dmg",
+            ".ipa",
+            "Info.plist",
+            "Mach-O LC_CODE_SIGNATURE",
+        ],
         dependencies: &["crorust-common"],
         sample_code: "// Ad-hoc or developer codesigning of Mach-O binary\nlet signed_macho = apple_engine::sign_macho(&macho_bytes, &code_identity)?;",
     },
@@ -64,7 +77,12 @@ pub const ALL_CRATES: &[CrateInfo] = &[
         summary: "Builds Windows MSIX Open Packaging Conventions (OPC) containers and Authenticode signatures.",
         details: "Generates AppxManifest.xml, Package Resource Index (PRI) resources, and AppxBlockMap.xml \
                  containing 64KB block SHA-256 hashes. Signs the container with X.509 Authenticode certificates.",
-        formats: &[".msix", "AppxBlockMap.xml", "AppxManifest.xml", "resources.pri"],
+        formats: &[
+            ".msix",
+            "AppxBlockMap.xml",
+            "AppxManifest.xml",
+            "resources.pri",
+        ],
         dependencies: &["crorust-common"],
         sample_code: "// Package and sign MSIX OPC bundle\nlet msix = MsixPackage::builder()\n    .manifest(appx_manifest)\n    .binary(\"app.exe\", exe_bytes)\n    .sign(&cert, &key)?;",
     },

@@ -1,0 +1,14 @@
+flowchart TD
+    classDef step fill:#1E3A8A,stroke:#38BDF8,stroke-width:2.5px,color:#FFFFFF;
+    classDef rect fill:#3B0764,stroke:#C084FC,stroke-width:2.5px,color:#FFFFFF;
+
+    subgraph PROGRESSION ["Ui Layout Progression: TopDown Direction"]
+        Step1["1. Initial State<br/>cursor: (10.0, 10.0)<br/>min_rect: (10.0, 10.0) -> (10.0, 10.0) [Zero size]"]:::step
+        Widget1["2. Allocate Label (size: 200.0, 20.0)<br/>Assigned Rect: (10.0, 10.0) -> (210.0, 30.0)<br/>Cursor advances down by: 20.0 + item_spacing.y (8.0)<br/>New Cursor: (10.0, 38.0)"]:::rect
+        Widget2["3. Allocate Button (size: 150.0, 32.0)<br/>Assigned Rect: (10.0, 38.0) -> (160.0, 70.0)<br/>Cursor advances down by: 32.0 + item_spacing.y (8.0)<br/>New Cursor: (10.0, 78.0)"]:::rect
+        Final["4. Container Complete<br/>min_rect expanded to encompass all widgets:<br/>(10.0, 10.0) -> (210.0, 70.0)"]:::step
+    end
+
+    Step1 --> Widget1
+    Widget1 --> Widget2
+    Widget2 --> Final

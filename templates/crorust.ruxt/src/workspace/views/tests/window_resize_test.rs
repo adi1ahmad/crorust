@@ -60,7 +60,6 @@ impl crate::Demo for WindowResizeTest {
                         format!("{}\n\n{}", crate::LOREM_IPSUM_LONG, crate::LOREM_IPSUM_LONG);
                     lorem_ipsum(ui, &lorem_ipsum_extra_long);
                 });
-
             });
 
         Window::new("↔ resizable without scroll")

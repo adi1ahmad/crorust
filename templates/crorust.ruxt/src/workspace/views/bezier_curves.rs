@@ -8,7 +8,6 @@ use egui::{
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct PaintBezier {
-
     degree: usize,
 
     control_points: [Pos2; 4],

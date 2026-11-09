@@ -12,6 +12,8 @@ pub struct MediaViewer {
     maintain_aspect_ratio: bool,
     max_size: Vec2,
     alt_text: String,
+    #[cfg_attr(feature = "serde", serde(skip))]
+    last_picked_generation: u64,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -43,6 +45,7 @@ impl Default for MediaViewer {
             maintain_aspect_ratio: true,
             max_size: Vec2::splat(2048.0),
             alt_text: "Loaded Image".to_owned(),
+            last_picked_generation: 0,
         }
     }
 }
@@ -59,16 +62,21 @@ impl MediaViewer {
                 self.current_uri = self.uri_edit_text.clone();
             }
 
-            if let Some(path) = crate::platform::poll_picked_file() {
-                self.uri_edit_text = format!("file://{}", path.display());
-                self.current_uri = self.uri_edit_text.clone();
+            if let Some(file) =
+                crate::platform::poll_picked_file_subscriber(&mut self.last_picked_generation)
+            {
+                ui.ctx().forget_image(&self.current_uri);
+                let uri = format!(
+                    "bytes://picked/{}/{}",
+                    self.last_picked_generation, file.name
+                );
+                ui.ctx().include_bytes(uri.clone(), file.bytes.clone());
+                self.uri_edit_text = uri.clone();
+                self.current_uri = uri;
             }
 
-            if ui.button("Choose File…").clicked()
-                && let Some(path) = crate::platform::pick_file()
-            {
-                self.uri_edit_text = format!("file://{}", path.display());
-                self.current_uri = self.uri_edit_text.clone();
+            if ui.button("Choose File…").clicked() {
+                crate::platform::pick_file_async();
             }
         });
 

@@ -101,31 +101,31 @@ jvm_target = "17"           # Java Virtual Machine bytecode compatibility level 
 #
 # Option A: Automatic GameActivity with auto-version pairing (Recommended)
 # When enabled, crorust automatically inspects Cargo.lock / Cargo.toml for `android-activity`:
-# - android-activity 0.5.x / 0.6.x  => automatically pairs with androidx.games:games-activity:2.0.2 (2-arg JNI)
-# - android-activity >= 0.7.x       => automatically pairs with androidx.games:games-activity:3.0.5 (17-arg JNI)
-# - unspecified / non-rust glue     => defaults to latest modern androidx.games:games-activity:3.0.5
+# - android-activity 0.5.x / 0.6.0  => automatically pairs with androidx.games:games-activity:2.0.2 (2-arg JNI)
+# - android-activity >= 0.6.1       => automatically pairs with androidx.games:games-activity:4.4.2 (17-arg JNI)
+# - unspecified / non-rust glue     => defaults to latest modern stable androidx.games:games-activity:4.4.2
 game_activity = true
 
 # Option B: Explicit GameActivity version string
 # Overrides auto-detection to pin a specific Google Android Game SDK release:
-# game_activity = "3.0.5"
+# game_activity = "4.4.2"
 
 # Option B2: Detailed GameActivity Configuration Table
 # [android.game_activity]
 # enabled = true
-# version = "3.0.5"
+# version = "4.4.2"
 
 # Option C: Structured Activity Table
 # [android.activity]
 # type = "game"                     # "game" (GameActivity) | "native" (NativeActivity) | "custom"
-# version = "3.0.5"                 # Explicit GameActivity version (auto-detected if omitted)
+# version = "4.4.2"                 # Explicit GameActivity version (auto-detected if omitted)
 # name = "crorust.ruxt.MainActivity"# Custom Android Activity subclass entrypoint
 
 # Option D: Direct Maven Dependency Override
 # Any coordinate declared in `dependencies` starting with `androidx.games:games-activity`
 # takes absolute precedence. crorust will NEVER inject a duplicate or conflicting version:
 # dependencies = [
-#     "androidx.games:games-activity:3.0.5",
+#     "androidx.games:games-activity:4.4.2",
 #     "androidx.appcompat:appcompat:1.7.0",
 #     "androidx.core:core-ktx:1.10.1",
 # ]

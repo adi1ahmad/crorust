@@ -1,0 +1,37 @@
+flowchart TD
+    classDef ctx fill:#3B0764,stroke:#C084FC,stroke-width:2.5px,color:#FFFFFF;
+    classDef substore fill:#1E293B,stroke:#60A5FA,stroke-width:2.5px,color:#FFFFFF;
+    classDef actor fill:#1E3A8A,stroke:#38BDF8,stroke-width:2.5px,color:#FFFFFF;
+    classDef queue fill:#451A03,stroke:#F59E0B,stroke-width:2.5px,color:#FFFFFF;
+
+    subgraph CONTEXT ["egui::Context (Arc&lt;ContextImpl&gt; — Thread-Safe, Cloneable)"]
+        Sync["Atomic Internal Synchronization<br/>(ParkingLot RwLock / Mutex Guards)"]:::ctx
+
+        subgraph STORES ["Internal Engine State Stores"]
+            InputStore["InputState<br/>Current/previous mouse positions, pressed keys, multi-touch"]:::substore
+            MemoryStore["Memory<br/>Widget caches, focus chain, layer order, temporary values"]:::substore
+            StyleStore["Style & Visuals<br/>Dark/Light color palette, rounding, item spacing, text styles"]:::substore
+            FontAtlas["FontAtlas<br/>Freetype/Ab_glyph glyph rasterizer, UV glyph rects, alpha texture"]:::substore
+            TexManager["TextureManager<br/>User dynamic textures, SVG vector cache, lifetime management"]:::substore
+        end
+
+        RepaintSignal["RepaintQueue & Wakeup Broadcaster<br/>Thread-safe closure invoking winit::EventLoopProxy::send_event()"]:::queue
+    end
+
+    subgraph CALLERS ["UI Threads & Asynchronous Callers"]
+        MainUI["UI Render Loop<br/>(Reads inputs, evaluates widgets, consumes output)"]:::actor
+        AsyncTokio["Tokio Background Task<br/>ctx.request_repaint() after network fetch"]:::actor
+        AnimationTimer["Frame Animation Timer<br/>ctx.request_repaint_after(Duration::from_millis(16))"]:::actor
+    end
+
+    MainUI <-->|"Takes &self (read locks)"| Sync
+    Sync --- InputStore
+    Sync --- MemoryStore
+    Sync --- StyleStore
+    Sync --- FontAtlas
+    Sync --- TexManager
+    Sync --- RepaintSignal
+
+    AsyncTokio -->|"Locks & pushes immediate wakeup"| RepaintSignal
+    AnimationTimer -->|"Schedules delayed wakeup"| RepaintSignal
+    RepaintSignal -.->|"Notifies winit event loop"| MainUI

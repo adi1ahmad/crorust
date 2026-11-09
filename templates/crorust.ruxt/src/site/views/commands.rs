@@ -1,29 +1,26 @@
 use egui::{RichText, Ui};
-use super::recipes::RecipeGenerator;
 
 #[derive(Default)]
-pub struct CommandsView {
-    recipes: RecipeGenerator,
-}
+pub struct CommandsView;
 
 impl CommandsView {
     pub fn ui(&mut self, ui: &mut Ui) {
-        ui.heading(RichText::new("CLI Commands Reference & Workflow Builder").size(26.0).strong());
+        ui.heading(
+            RichText::new("CLI Commands Reference Manual")
+                .size(26.0)
+                .strong(),
+        );
         ui.add_space(6.0);
         ui.label(
-            RichText::new("Complete reference manual for all crorust CLI commands and parameters.")
-                .size(14.0)
-                .weak(),
+            RichText::new(
+                "Complete reference manual for all crorust CLI commands, parameters, and flags.",
+            )
+            .size(14.0)
+            .weak(),
         );
         ui.add_space(12.0);
         ui.separator();
-        ui.add_space(10.0);
-
-        self.recipes.ui(ui);
-
-        ui.add_space(24.0);
-        ui.heading(RichText::new("Command Encyclopedia").size(20.0).strong());
-        ui.add_space(12.0);
+        ui.add_space(16.0);
 
         render_cmd_entry(
             ui,
@@ -109,14 +106,30 @@ fn render_cmd_entry(ui: &mut Ui, syntax: &str, title: &str, desc: &str, example:
         .inner_margin(14.0)
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.horizontal(|ui| {
-                ui.label(RichText::new(syntax).monospace().strong().size(16.0).color(egui::Color32::from_rgb(31, 111, 235)));
-                ui.label(RichText::new(format!("— {}", title)).strong().size(14.0));
+            ui.horizontal_wrapped(|ui| {
+                ui.label(
+                    RichText::new(syntax)
+                        .monospace()
+                        .strong()
+                        .size(16.0)
+                        .color(egui::Color32::from_rgb(31, 111, 235)),
+                );
+                ui.label(RichText::new("—").strong().size(14.0).weak());
+                ui.label(RichText::new(title).strong().size(14.0));
             });
             ui.add_space(6.0);
-            ui.label(RichText::new(desc).size(13.0).color(ui.visuals().text_color()));
+            ui.label(
+                RichText::new(desc)
+                    .size(13.0)
+                    .color(ui.visuals().text_color()),
+            );
             ui.add_space(8.0);
-            crate::rust_view_ui(ui, example);
+            egui::ScrollArea::horizontal()
+                .id_salt(syntax)
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    crate::rust_view_ui(ui, example);
+                });
         });
     ui.add_space(10.0);
 }

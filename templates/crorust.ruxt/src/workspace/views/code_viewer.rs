@@ -15,7 +15,6 @@ impl Default for CodeExample {
 
 impl CodeExample {
     fn samples_in_grid(&mut self, ui: &mut egui::Ui) {
-
         let Self { name, age } = self;
 
         show_code(ui, r#"ui.heading("Example");"#);
@@ -148,7 +147,11 @@ fn show_code(ui: &mut egui::Ui, code: &str) {
             crate::rust_view_ui(ui, &code);
         });
         ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
-            if ui.small_button("📋").on_hover_text("Copy snippet to clipboard").clicked() {
+            if ui
+                .small_button("📋")
+                .on_hover_text("Copy snippet to clipboard")
+                .clicked()
+            {
                 ui.ctx().copy_text(code.clone());
             }
         });

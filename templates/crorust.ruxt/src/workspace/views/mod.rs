@@ -8,6 +8,7 @@ pub mod dancing_strings;
 pub mod data_tables;
 pub mod display_calibration;
 pub mod drag_drop;
+pub mod file_showcase;
 pub mod layout_strips;
 pub mod modals;
 pub mod popups;
@@ -31,7 +32,8 @@ pub mod tests;
 pub use about::About;
 pub use clock::AnalogClock;
 pub use display_calibration::DisplayCalibration;
-pub use widgets::{WidgetShowcase, WidgetGallery};
+pub use file_showcase::UniversalFileShowcase;
+pub use widgets::{WidgetGallery, WidgetShowcase};
 
 #[cfg(feature = "media_viewer")]
 pub use media_viewer::MediaViewer;

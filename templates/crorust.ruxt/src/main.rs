@@ -1,11 +1,19 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![allow(clippy::never_loop)]
 
-#[cfg(all(not(target_arch = "wasm32"), not(target_os = "android"), not(target_os = "ios")))]
+#[cfg(all(
+    not(target_arch = "wasm32"),
+    not(target_os = "android"),
+    not(target_os = "ios")
+))]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-#[cfg(all(not(target_arch = "wasm32"), not(target_os = "android"), not(target_os = "ios")))]
+#[cfg(all(
+    not(target_arch = "wasm32"),
+    not(target_os = "android"),
+    not(target_os = "ios")
+))]
 fn main() {
     for arg in std::env::args().skip(1) {
         match arg.as_str() {
@@ -23,28 +31,19 @@ fn main() {
     }
 
     {
-
-        let mut rust_log = std::env::var("RUST_LOG").unwrap_or_else(|_| {
+        let mut builder = env_logger::Builder::from_default_env();
+        if std::env::var("RUST_LOG").is_err() {
             if cfg!(debug_assertions) {
-                "debug".to_owned()
+                builder.filter_level(log::LevelFilter::Debug);
             } else {
-                "info".to_owned()
+                builder.filter_level(log::LevelFilter::Info);
             }
-        });
+        }
         for loud_crate in ["naga", "wgpu_core", "wgpu_hal"] {
-            if !rust_log.contains(&format!("{loud_crate}=")) {
-                use core::fmt::Write as _;
-                write!(rust_log, ",{loud_crate}=warn").ok();
-            }
+            builder.filter_module(loud_crate, log::LevelFilter::Warn);
         }
-
-        #[expect(unsafe_code)]
-        unsafe {
-            std::env::set_var("RUST_LOG", rust_log);
-        }
+        builder.init();
     }
-
-    env_logger::init();
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()

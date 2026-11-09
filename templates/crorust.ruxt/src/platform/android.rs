@@ -108,7 +108,7 @@ pub extern "system" fn Java_crorust_ruxt_bridge_RustBridge_onFilesSelected<'call
     let _ = unowned_env.with_env(|env| -> Result<(), jni::errors::Error> {
         if paths.is_null() {
             log::info!("RustBridge.onFilesSelected: user cancelled picker");
-            super::dialog::deliver_picked_file(None);
+            super::dialog::deliver_picked_path(None);
             return Ok(());
         }
 
@@ -118,11 +118,11 @@ pub extern "system" fn Java_crorust_ruxt_bridge_RustBridge_onFilesSelected<'call
             let mutf8 = jstr.mutf8_chars(env)?;
             let path_str = mutf8.to_str();
             log::info!("RustBridge.onFilesSelected: received path: {}", path_str);
-            super::dialog::deliver_picked_file(Some(std::path::PathBuf::from(path_str.as_ref())));
+            super::dialog::deliver_picked_path(Some(std::path::PathBuf::from(path_str.as_ref())));
             return Ok(());
         }
 
-        super::dialog::deliver_picked_file(None);
+        super::dialog::deliver_picked_path(None);
         Ok(())
     });
 }
@@ -189,7 +189,6 @@ pub extern "system" fn Java_crorust_ruxt_bridge_RustBridge_onKeyAction<'caller>(
     key_code: jni::sys::jint,
     _is_down: jni::sys::jboolean,
 ) {
-
     if key_code == 67 {
         if let Ok(mut lock) = PENDING_IME_EVENTS.lock() {
             lock.push(egui::Event::Key {
